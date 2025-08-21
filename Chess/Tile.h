@@ -1,14 +1,16 @@
 #pragma once
+
+
 class Tile
 {
-	bool hasFigure; // To check if there is a chess piece on the tile
+	
 	int x;
 	int y;
 public:
+	bool hasFigure; // To check if there is a chess piece on the tile
 	Tile(int _x, int _y, bool _hasFigure = false);
-	Tile() : hasFigure(false), x(0), y(0) {}
+	Tile() = default;
 	bool HasFigure() const;
-	void SetHasFigure(bool _hasFigure);
 	int GetX() const;
 	int GetY() const;
 	void SetPosition(int _x, int _y);

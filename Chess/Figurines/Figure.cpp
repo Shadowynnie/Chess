@@ -1,6 +1,6 @@
-#include "Figurine.h"
+#include "Figure.h"
 
-Figurine::Figurine(int _x, int _y, bool _isWhite) : sprite(texture)
+Figure::Figure(int _x, int _y, bool _isWhite) : sprite(texture)
 {
 	x = _x;
 	y = _y;
@@ -14,12 +14,12 @@ Figurine::Figurine(int _x, int _y, bool _isWhite) : sprite(texture)
 	sprite.setTexture(texture);
 }
 
-sf::Sprite Figurine::getSprite() const
+sf::Sprite Figure::getSprite() const
 {
 	return sprite;
 }
 
-void Figurine::move(int newX, int newY)
+void Figure::move(int newX, int newY)
 {
 	// Update the position of the figurine
 	x = newX;

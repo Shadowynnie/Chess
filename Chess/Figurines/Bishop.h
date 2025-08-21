@@ -1,8 +1,8 @@
 #pragma once
-#include "Figurine.h"
+#include "Figure.h"
 
 
-class Bishop : public Figurine
+class Bishop : public Figure
 {
 public:
 	Bishop(int _x, int _y, bool _isWhite);

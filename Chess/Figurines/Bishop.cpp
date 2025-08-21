@@ -1,19 +1,21 @@
 #include "Bishop.h"
 
+
 Bishop::Bishop(int _x, int _y, bool _isWhite)
 {
 	x = _x;
 	y = _y;
 	isWhite = _isWhite;
 
-	if (!texture.loadFromFile(isWhite ? "Assets/bishop_white.png" : "Assets/bishop_black.png"))
+	if (isWhite)
 	{
-		std::cerr << "Failed to load texture." << std::endl;
-		return;
+		sprite = assetManager.bishopSpriteWhite; // Use the asset manager to get the white bishop sprite
 	}
-	sprite = sf::Sprite(texture); // Now assign the loaded texture
-	sprite.setScale(sf::Vector2f(0.5f, 0.5f));
-	sprite.setPosition(sf::Vector2f(0.f, 0.f));
+	else
+	{
+		sprite = assetManager.bishopSpriteBlack; // Use the asset manager to get the black bishop sprite
+	}
+	sprite.setPosition(sf::Vector2f(float(x*64), float(x * 64)));
 }
 
 vector<Tile> Bishop::getPossibleMoves(const Tile tiles[8][8]) const

@@ -12,11 +12,6 @@ bool Tile::HasFigure() const
 	return hasFigure;
 }
 
-void Tile::SetHasFigure(bool _hasFigure) 
-{
-	hasFigure = _hasFigure;
-}
-
 int Tile::GetX() const 
 {
 	return x;

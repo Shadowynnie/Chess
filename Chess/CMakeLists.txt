@@ -3,7 +3,7 @@
 #
 find_package(SFML 3 REQUIRED COMPONENTS Graphics)
 # Add source to this project's executable.
-add_executable (Chess "Chess.cpp" "Chess.h" "Tile.h" "Tile.cpp" "Figurines/Figurine.h" "Figurines/Figurine.cpp" "Figurines/Pawn.h" "Figurines/Pawn.cpp" "Figurines/Rook.h" "Figurines/Rook.cpp" "Figurines/Knight.h" "Figurines/Knight.cpp" "Figurines/Bishop.h" "Figurines/Bishop.cpp" "Figurines/Queen.h" "Figurines/Queen.cpp" "Figurines/King.h" "Figurines/King.cpp" "AssetManager.h" "AssetManager.cpp" "Networking/NetworkManager.h" "Networking/NetworkManager.cpp" "GameManager.h" "GameManager.cpp")
+add_executable (Chess "Chess.cpp" "Chess.h" "Tile.h" "Tile.cpp" "Figurines/Figure.h" "Figurines/Figure.cpp" "Figurines/Pawn.h" "Figurines/Pawn.cpp" "Figurines/Rook.h" "Figurines/Rook.cpp" "Figurines/Knight.h" "Figurines/Knight.cpp" "Figurines/Bishop.h" "Figurines/Bishop.cpp" "Figurines/Queen.h" "Figurines/Queen.cpp" "Figurines/King.h" "Figurines/King.cpp" "AssetManager.h" "AssetManager.cpp" "Networking/NetworkManager.h" "Networking/NetworkManager.cpp" "GameManager.h" "GameManager.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Chess PROPERTY CXX_STANDARD 20)
