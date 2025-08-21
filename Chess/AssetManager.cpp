@@ -2,6 +2,10 @@
 #include <iostream>
 #include <filesystem>
 
+using std::cout;
+using std::cerr;
+using std::endl;
+
 AssetManager::AssetManager()
 {
 	const char* fileNames[] = {
@@ -19,65 +23,124 @@ AssetManager::AssetManager()
 		"Assets/king_black.png"
 	};
 	// Load the textures
-	std::cout << "Loading texture: " << fileNames[0] << std::endl;
+	cout << "Loading texture: " << fileNames[0] << endl;
 	if (!pawnTexWhite.loadFromFile(fileNames[0])) 
 	{
-		std::cerr << "Failed to load " << fileNames[0] << std::endl;
+		cerr << "Failed to load " << fileNames[0] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[0] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[1] << endl;
 	if (!rookTexWhite.loadFromFile(fileNames[1])) 
 	{
-		std::cerr << "Failed to load " << fileNames[1] << std::endl;
+		cerr << "Failed to load " << fileNames[1] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[1] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[2] << endl;
 	if (!knightTexWhite.loadFromFile(fileNames[2])) 
 	{
-		std::cerr << "Failed to load " << fileNames[2] << std::endl;
+		cerr << "Failed to load " << fileNames[2] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[2] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[3] << endl;
 	if (!bishopTexWhite.loadFromFile(fileNames[3])) 
 	{
-		std::cerr << "Failed to load " << fileNames[3] << std::endl;
+		cerr << "Failed to load " << fileNames[3] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[3] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[4] << endl;
 	if (!queenTexWhite.loadFromFile(fileNames[4])) 
 	{
-		std::cerr << "Failed to load " << fileNames[4] << std::endl;
+		cerr << "Failed to load " << fileNames[4] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[4] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[5] << endl;
 	if (!kingTexWhite.loadFromFile(fileNames[5])) 
 	{
-		std::cerr << "Failed to load " << fileNames[5] << std::endl;
+		cerr << "Failed to load " << fileNames[5] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[5] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[6] << endl;
 	if (!pawnTexBlack.loadFromFile(fileNames[6])) 
 	{
-		std::cerr << "Failed to load " << fileNames[6] << std::endl;
+		cerr << "Failed to load " << fileNames[6] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[6] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[7] << endl;
 	if (!rookTexBlack.loadFromFile(fileNames[7])) 
 	{
-		std::cerr << "Failed to load " << fileNames[7] << std::endl;
+		cerr << "Failed to load " << fileNames[7] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[7] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[8] << endl;
 	if (!knightTexBlack.loadFromFile(fileNames[8])) 
 	{
-		std::cerr << "Failed to load " << fileNames[8] << std::endl;
+		cerr << "Failed to load " << fileNames[8] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[8] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[9] << endl;
 	if (!bishopTexBlack.loadFromFile(fileNames[9])) 
 	{
-		std::cerr << "Failed to load " << fileNames[9] << std::endl;
+		cerr << "Failed to load " << fileNames[9] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[9] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[10] << endl;
 	if (!queenTexBlack.loadFromFile(fileNames[10])) 
 	{
-		std::cerr << "Failed to load " << fileNames[10] << std::endl;
+		cerr << "Failed to load " << fileNames[10] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[10] << endl;
 	}
 
+	cout << "Loading texture: " << fileNames[11] << endl;
 	if (!kingTexBlack.loadFromFile(fileNames[11])) 
 	{
-		std::cerr << "Failed to load " << fileNames[11] << std::endl;
+		cerr << "Failed to load " << fileNames[11] << endl;
+	}
+	else
+	{
+		cout << "Successfully loaded " << fileNames[11] << endl;
 	}
 
 	// Create the sprites AFTER textures are loaded

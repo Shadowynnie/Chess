@@ -5,15 +5,15 @@ King::King(int _x, int _y, bool _isWhite)
 	x = _x;
 	y = _y;
 	isWhite = _isWhite;
-	texturePathBlack = "Assets/king_black.png"; // Path to black king texture
-	texturePathWhite = "Assets/king_white.png"; // Path to white king texture
-	if (!texture.loadFromFile(isWhite ? texturePathWhite : texturePathBlack))
+
+	if (isWhite)
 	{
-		std::cerr << "Failed to load texture." << std::endl;
-		return;
+		sprite = assetManager.kingSpriteWhite; // Use the asset manager to get the white bishop sprite
 	}
-	sprite = sf::Sprite(texture); // Now assign the loaded texture
-	sprite.setScale(sf::Vector2f(0.5f, 0.5f));
+	else
+	{
+		sprite = assetManager.kingSpriteBlack; // Use the asset manager to get the black bishop sprite
+	}
 	sprite.setPosition(sf::Vector2f(1.f, 1.f));
 }
 

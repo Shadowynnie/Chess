@@ -24,28 +24,5 @@ int main()
 	GameManager gameManager;
 	gameManager.InitializeBoard();
 	gameManager.Update();
-
-    /*
-	while(window.isOpen())
-	{
-        
-		std::optional<sf::Event> event;
-		while (event = window.pollEvent())
-		{
-			if (event->is<sf::Event::Closed>() ||
-				(event->is<sf::Event::KeyPressed>() &&
-				event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Escape))
-			{
-				window.close();
-			}
-		}
-        window.clear();
-
-
-
-        window.display();
-
-	}
-    */
 	return 0;
 }

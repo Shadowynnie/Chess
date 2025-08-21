@@ -17,6 +17,8 @@ using std::cerr;
 using std::endl;
 using std::cout;
 
+static bool currentRound = true; // True for player 1's turn, false for player 2's turn
+
 class GameManager
 {
 	private:

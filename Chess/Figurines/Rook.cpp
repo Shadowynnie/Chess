@@ -5,15 +5,15 @@ Rook::Rook(int _x, int _y, bool _isWhite)
 	x = _x;
 	y = _y;
 	isWhite = _isWhite;
-	texturePathBlack = "Assets/rook_black.png"; // Path to black rook texture
-	texturePathWhite = "Assets/rook_white.png"; // Path to white rook texture
-	if (!texture.loadFromFile(isWhite ? texturePathWhite : texturePathBlack))
+
+	if (isWhite)
 	{
-		std::cerr << "Failed to load texture." << std::endl;
-		return;
+		sprite = assetManager.rookSpriteWhite; // Use the asset manager to get the white bishop sprite
 	}
-	sprite = sf::Sprite(texture); // Now assign the loaded texture
-	sprite.setScale(sf::Vector2f(0.5f, 0.5f));
+	else
+	{
+		sprite = assetManager.rookSpriteBlack; // Use the asset manager to get the black bishop sprite
+	}
 	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
 }
 
@@ -42,7 +42,9 @@ vector<Tile> Rook::getPossibleMoves(const Tile tiles[8][8]) const
 			newX += dx;
 		}
 	}
-	for (int dy = -1; dy <= 1; dy += 2) // Vertical movement
+
+	// Vertical movement
+	for (int dy = -1; dy <= 1; dy += 2) 
 	{
 		int newY = y + dy;
 		while (newY >= 0 && newY < 8)

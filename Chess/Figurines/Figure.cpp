@@ -5,12 +5,7 @@ Figure::Figure(int _x, int _y, bool _isWhite) : sprite(texture)
 	x = _x;
 	y = _y;
 	isWhite = _isWhite;
-	// Load the texture based on the color of the figurine
-	//if (isWhite) {
-	//	texture.loadFromFile("path/to/white/figurine.png"); // Replace with actual path
-	//} else {
-	//	texture.loadFromFile("path/to/black/figurine.png"); // Replace with actual path
-	//}
+	// Load the texture based on the color of the figure
 	sprite.setTexture(texture);
 }
 

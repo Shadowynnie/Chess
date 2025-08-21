@@ -76,7 +76,7 @@ void GameManager::Draw(sf::RenderWindow& window)
 		{
 			sf::RectangleShape tileShape(sf::Vector2f(64, 64));
 			tileShape.setPosition(sf::Vector2f(float(i * 64), float(j * 64)));
-			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color::White : sf::Color::Black);
+			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
 			window.draw(tileShape);
 		}
 	}

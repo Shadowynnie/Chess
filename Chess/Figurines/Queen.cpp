@@ -5,15 +5,15 @@ Queen::Queen(int _x, int _y, bool _isWhite)
 	x = _x;
 	y = _y;
 	isWhite = _isWhite;
-	texturePathBlack = "Assets/queen_black.png"; // Path to black queen texture
-	texturePathWhite = "Assets/queen_white.png"; // Path to white queen texture
-	if (!texture.loadFromFile(isWhite ? texturePathWhite : texturePathBlack))
+	
+	if (isWhite)
 	{
-		std::cerr << "Failed to load texture." << std::endl;
-		return;
+		sprite = assetManager.queenSpriteWhite; // Use the asset manager to get the white bishop sprite
 	}
-	sprite = sf::Sprite(texture); // Now assign the loaded texture
-	sprite.setScale(sf::Vector2f(0.5f, 0.5f));
+	else
+	{
+		sprite = assetManager.queenSpriteBlack; // Use the asset manager to get the black bishop sprite
+	}
 	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
 }
 
