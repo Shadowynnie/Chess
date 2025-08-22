@@ -54,22 +54,10 @@ void GameManager::InitializeBoard()
 	{
 		player2figures.push_back(new Pawn(i, 6, false));
 	}
-	
-	// Set hasFigure for tiles with figures
-	/*
-	for (auto figure : player1figures) 
-	{
-        int fx = figure->getSprite().getPosition().x / 64;
-        int fy = figure->getSprite().getPosition().y / 64;
-        if (fx >= 0 && fx < 8 && fy >= 0 && fy < 8) 
-		{
-            tiles[fx][fy].hasFigure = true;
-        }
-	}*/
-
 
 	// Mark tiles that have figures (both players)
-	auto markTiles = [&](const std::vector<Figure*>& figs) {
+	auto markTiles = [&](const std::vector<Figure*>& figs) 
+	{
 		for (auto figure : figs)
 		{
 			int fx = figure->getSprite().getPosition().x / 64;
@@ -79,7 +67,7 @@ void GameManager::InitializeBoard()
 				tiles[fx][fy].hasFigure = true;
 			}
 		}
-		};
+	};
 	markTiles(player1figures);
 	markTiles(player2figures);
 }
@@ -106,6 +94,40 @@ void GameManager::Draw(sf::RenderWindow& window)
 	for (auto figure : player2figures) 
 	{
 		window.draw(figure->getSprite());
+	}
+}
+
+void GameManager::HandleInput(sf::Event event) 
+{
+	/*TODO: Handle input events (clicking on a figure, etc)*/
+}
+
+void GameManager::Update() 
+{
+	/* TODO: Handle input events, update game state*/
+	// Update game state (e.g., check for win conditions, update figure positions)
+	// This function can be expanded to include game logic
+	sf::RenderWindow window(sf::VideoMode({ 512,512 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
+
+	while (window.isOpen())
+	{
+
+		std::optional<sf::Event> event;
+		while (event = window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>() ||
+				(event->is<sf::Event::KeyPressed>() &&
+					event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Escape))
+			{
+				window.close();
+			}
+		}
+		window.clear();
+		Draw(window);
+
+
+		window.display();
+
 	}
 }
 
@@ -138,37 +160,3 @@ void GameManager::Draw(sf::RenderWindow& window)
 	for (auto figure : player1figures) window.draw(figure->getSprite());
 	for (auto figure : player2figures) window.draw(figure->getSprite());
 }*/
-
-void GameManager::HandleInput(sf::Event event) 
-{
-	/*TODO: Handle input events (clicking on a figure, etc)*/
-}
-
-void GameManager::Update() 
-{
-	// TODO: Handle input events, update game state
-	// Update game state (e.g., check for win conditions, update figure positions)
-	// This function can be expanded to include game logic
-	sf::RenderWindow window(sf::VideoMode({ 512,512 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
-
-	while (window.isOpen())
-	{
-
-		std::optional<sf::Event> event;
-		while (event = window.pollEvent())
-		{
-			if (event->is<sf::Event::Closed>() ||
-				(event->is<sf::Event::KeyPressed>() &&
-					event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Escape))
-			{
-				window.close();
-			}
-		}
-		window.clear();
-		Draw(window);
-
-
-		window.display();
-
-	}
-}
