@@ -56,6 +56,7 @@ void GameManager::InitializeBoard()
 	}
 	
 	// Set hasFigure for tiles with figures
+	/*
 	for (auto figure : player1figures) 
 	{
         int fx = figure->getSprite().getPosition().x / 64;
@@ -64,8 +65,25 @@ void GameManager::InitializeBoard()
 		{
             tiles[fx][fy].hasFigure = true;
         }
-	}
+	}*/
+
+
+	// Mark tiles that have figures (both players)
+	auto markTiles = [&](const std::vector<Figure*>& figs) {
+		for (auto figure : figs)
+		{
+			int fx = figure->getSprite().getPosition().x / 64;
+			int fy = figure->getSprite().getPosition().y / 64;
+			if (fx >= 0 && fx < 8 && fy >= 0 && fy < 8)
+			{
+				tiles[fx][fy].hasFigure = true;
+			}
+		}
+		};
+	markTiles(player1figures);
+	markTiles(player2figures);
 }
+
 
 void GameManager::Draw(sf::RenderWindow& window) 
 {
@@ -91,10 +109,39 @@ void GameManager::Draw(sf::RenderWindow& window)
 	}
 }
 
+/*
+void GameManager::Draw(sf::RenderWindow& window)
+{
+	// Draw tiles
+	for (int i = 0; i < 8; ++i)
+	{
+		for (int j = 0; j < 8; ++j)
+		{
+			sf::RectangleShape tileShape(sf::Vector2f(64, 64));
+			tileShape.setPosition(sf::Vector2f(float(i * 64), float(j * 64)));
+			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
+			window.draw(tileShape);
+
+			// Debug red circle if hasFigure == true
+			if (tiles[i][j].hasFigure)
+			{
+				sf::CircleShape circle(25); // radius = 25px
+				circle.setFillColor(sf::Color::Red);
+				circle.setOrigin(sf::Vector2f(float(circle.getRadius()), float(circle.getRadius())));
+				circle.setPosition(sf::Vector2f(float(i * 64 + 32), float(j * 64 + 32)));
+				window.draw(circle);
+			}
+		}
+	}
+
+	// Draw figures
+	for (auto figure : player1figures) window.draw(figure->getSprite());
+	for (auto figure : player2figures) window.draw(figure->getSprite());
+}*/
+
 void GameManager::HandleInput(sf::Event event) 
 {
-	// Handle user input events (e.g., mouse clicks, key presses)
-	// This function can be expanded to handle specific game logic
+	/*TODO: Handle input events (clicking on a figure, etc)*/
 }
 
 void GameManager::Update() 

@@ -36,4 +36,3 @@ public:
 
 	//sf::RectangleShape mouseShape{ sf::Vector2f(5, 5) };
 };
-#pragma once

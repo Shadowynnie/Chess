@@ -6,6 +6,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+
 AssetManager::AssetManager()
 {
 	const char* fileNames[] = {
@@ -22,6 +23,55 @@ AssetManager::AssetManager()
 		"Assets/queen_black.png",
 		"Assets/king_black.png"
 	};
+
+	sf::Texture textures[] = {
+		pawnTexWhite,
+		rookTexWhite,
+		knightTexWhite,
+		bishopTexWhite,
+		queenTexWhite,
+		kingTexWhite,
+		pawnTexBlack,
+		rookTexBlack,
+		knightTexBlack,
+		bishopTexBlack,
+		queenTexBlack,
+		kingTexBlack
+	};
+
+	sf::Sprite sprites[] = {
+		pawnSpriteWhite,
+		rookSpriteWhite,
+		knightSpriteWhite,
+		bishopSpriteWhite,
+		queenSpriteWhite,
+		kingSpriteWhite,
+		pawnSpriteBlack,
+		rookSpriteBlack,
+		knightSpriteBlack,
+		bishopSpriteBlack,
+		queenSpriteBlack,
+		kingSpriteBlack
+	};
+
+	//size_t fileCount = sizeof(fileNames) / sizeof(fileNames[0]);
+	// Loop through the file names and attempt to load each texture
+	for (size_t i = 0; i < (sizeof(fileNames) / sizeof(fileNames[0])); i++)
+	{
+		cout << "Loading texture: " << fileNames[i] << endl;
+		if (!textures[i].loadFromFile(fileNames[i]))
+		{
+			cerr << "Failed to load " << fileNames[i] << endl;
+		}
+		else
+		{
+			cout << "Successfully loaded " << fileNames[i] << endl;
+			sprites[i] = sf::Sprite(textures[i]);
+			sprites[i].setScale(sf::Vector2f(0.5f, 0.5f));
+		}
+	}
+
+	/*
 	// Load the textures
 	cout << "Loading texture: " << fileNames[0] << endl;
 	if (!pawnTexWhite.loadFromFile(fileNames[0])) 
@@ -141,9 +191,10 @@ AssetManager::AssetManager()
 	else
 	{
 		cout << "Successfully loaded " << fileNames[11] << endl;
-	}
+	}*/
 
 	// Create the sprites AFTER textures are loaded
+	/*
 	pawnSpriteWhite = sf::Sprite(pawnTexWhite);
 	rookSpriteWhite = sf::Sprite(rookTexWhite);
 	knightSpriteWhite = sf::Sprite(knightTexWhite);
@@ -156,10 +207,10 @@ AssetManager::AssetManager()
 	knightSpriteBlack = sf::Sprite(knightTexBlack);
 	bishopSpriteBlack = sf::Sprite(bishopTexBlack);
 	queenSpriteBlack = sf::Sprite(queenTexBlack);
-	kingSpriteBlack = sf::Sprite(kingTexBlack);
+	kingSpriteBlack = sf::Sprite(kingTexBlack);*/
 
 	// Set the initial positions of the sprites
-
+	/*
 	pawnSpriteWhite.setPosition(sf::Vector2f(100, 100));
 	rookSpriteWhite.setPosition(sf::Vector2f(200, 100));
 	knightSpriteWhite.setPosition(sf::Vector2f(300, 100));
@@ -172,10 +223,10 @@ AssetManager::AssetManager()
 	knightSpriteBlack.setPosition(sf::Vector2f(300, 200));
 	bishopSpriteBlack.setPosition(sf::Vector2f(400, 200));
 	queenSpriteBlack.setPosition(sf::Vector2f(500, 200));
-	kingSpriteBlack.setPosition(sf::Vector2f(600, 200));
+	kingSpriteBlack.setPosition(sf::Vector2f(600, 200));*/
 
 	// Set the scale of the sprites (originally they were 128x128, now scaled down to 64x64)
-
+	/*
 	pawnSpriteWhite.setScale(sf::Vector2f(0.5f, 0.5f));
 	rookSpriteWhite.setScale(sf::Vector2f(0.5f, 0.5f));
 	knightSpriteWhite.setScale(sf::Vector2f(0.5f, 0.5f));
@@ -188,5 +239,5 @@ AssetManager::AssetManager()
 	knightSpriteBlack.setScale(sf::Vector2f(0.5f, 0.5f));
 	bishopSpriteBlack.setScale(sf::Vector2f(0.5f, 0.5f));
 	queenSpriteBlack.setScale(sf::Vector2f(0.5f, 0.5f));
-	kingSpriteBlack.setScale(sf::Vector2f(0.5f, 0.5f));
+	kingSpriteBlack.setScale(sf::Vector2f(0.5f, 0.5f));*/
 }
