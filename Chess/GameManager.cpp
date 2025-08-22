@@ -1,5 +1,8 @@
 #include "GameManager.h"
 
+
+enum class PieceType { Rook, Knight, Bishop, Queen, King, Pawn };
+
 GameManager::GameManager() 
 {
 	InitializeBoard();
@@ -16,6 +19,8 @@ GameManager::~GameManager()
 		delete figure;
 	}
 }
+
+/*
 void GameManager::InitializeBoard() 
 {
 	// Initialize tiles
@@ -70,8 +75,63 @@ void GameManager::InitializeBoard()
 	};
 	markTiles(player1figures);
 	markTiles(player2figures);
-}
+}*/
 
+void GameManager::InitializeBoard()
+{
+	// Initialize tiles
+	for (int i = 0; i < 8; ++i)
+	{
+		for (int j = 0; j < 8; ++j)
+		{
+			tiles[i][j] = Tile(i, j, false);
+		}
+	}
+
+	// Factory map for all piece types, this can replace switch-case or if-else chains
+	map<PieceType, function<Figure* (int, int, bool)>> factories = {
+		{ PieceType::Rook,   [](int x,int y,bool w) { return new Rook(x,y,w); } },
+		{ PieceType::Knight, [](int x,int y,bool w) { return new Knight(x,y,w); } },
+		{ PieceType::Bishop, [](int x,int y,bool w) { return new Bishop(x,y,w); } },
+		{ PieceType::Queen,  [](int x,int y,bool w) { return new Queen(x,y,w); } },
+		{ PieceType::King,   [](int x,int y,bool w) { return new King(x,y,w); } },
+		{ PieceType::Pawn,   [](int x,int y,bool w) { return new Pawn(x,y,w); } },
+	};
+
+	// Back rank layout
+	std::array<PieceType, 8> backRank = {
+		PieceType::Rook, PieceType::Knight, PieceType::Bishop, PieceType::Queen,
+		PieceType::King, PieceType::Bishop, PieceType::Knight, PieceType::Rook
+	};
+
+	// Helper lambda for player initialization
+	auto initPlayer = [&](bool isWhite)
+	{
+		int backRankRow = isWhite ? 0 : 7;
+		int pawnRow = isWhite ? 1 : 6;
+		auto& figures = isWhite ? player1figures : player2figures;
+
+		// Back rank
+		for (int file = 0; file < 8; ++file)
+		{
+			PieceType type = backRank[file];
+			Figure* fig = factories[type](file, backRankRow, isWhite);
+			figures.push_back(fig);
+			tiles[file][backRankRow].hasFigure = true;
+		}
+
+		// Pawns
+		for (int file = 0; file < 8; ++file)
+		{
+			Figure* fig = factories[PieceType::Pawn](file, pawnRow, isWhite);
+			figures.push_back(fig);
+			tiles[file][pawnRow].hasFigure = true;
+		}
+	};
+
+	initPlayer(true);   // White
+	initPlayer(false);  // Black
+}
 
 void GameManager::Draw(sf::RenderWindow& window) 
 {
@@ -131,7 +191,7 @@ void GameManager::Update()
 	}
 }
 
-/*
+/* // Debug draw with red circles on tiles that have figures
 void GameManager::Draw(sf::RenderWindow& window)
 {
 	// Draw tiles

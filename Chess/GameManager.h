@@ -2,6 +2,8 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <iostream>
+#include <map>
+#include <functional>
 
 #include "Tile.h"
 #include "Figurines/Figure.h"
@@ -13,6 +15,8 @@
 #include "Figurines/Pawn.h"
 
 using std::vector;
+using std::map;
+using std::function;
 using std::cerr;
 using std::endl;
 using std::cout;
