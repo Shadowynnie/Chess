@@ -6,6 +6,7 @@ Rook::Rook(int _x, int _y, bool _isWhite)
 	y = _y;
 	isWhite = _isWhite;
 
+	/*
 	if (isWhite)
 	{
 		sprite = assetManager.rookSpriteWhite; // Use the asset manager to get the white bishop sprite
@@ -13,7 +14,9 @@ Rook::Rook(int _x, int _y, bool _isWhite)
 	else
 	{
 		sprite = assetManager.rookSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}
+	}*/
+	string key = isWhite ? "rook_white" : "rook_black";
+	sprite = assetManager.getSprite(key);
 	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
 }
 

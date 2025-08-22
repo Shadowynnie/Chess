@@ -146,7 +146,7 @@ void GameManager::HandleInput(sf::Event event)
 
 void GameManager::Update() 
 {
-	
+	// TODO: Handle input events, update game state
 	// Update game state (e.g., check for win conditions, update figure positions)
 	// This function can be expanded to include game logic
 	sf::RenderWindow window(sf::VideoMode({ 512,512 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);

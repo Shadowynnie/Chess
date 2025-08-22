@@ -2,10 +2,12 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <iostream>
+#include <string>
 
 #include "../Tile.h"
 #include "../AssetManager.h"
 
+using std::string;
 using std::vector;
 
 static const char* texturePathWhite = ""; // Path to white bishop texture

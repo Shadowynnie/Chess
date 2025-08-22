@@ -6,6 +6,7 @@ King::King(int _x, int _y, bool _isWhite)
 	y = _y;
 	isWhite = _isWhite;
 
+	/*
 	if (isWhite)
 	{
 		sprite = assetManager.kingSpriteWhite; // Use the asset manager to get the white bishop sprite
@@ -13,7 +14,9 @@ King::King(int _x, int _y, bool _isWhite)
 	else
 	{
 		sprite = assetManager.kingSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}
+	}*/
+	string key = isWhite ? "king_white" : "king_black";
+	sprite = assetManager.getSprite(key);
 	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
 }
 

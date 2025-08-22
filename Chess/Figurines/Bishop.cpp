@@ -7,6 +7,7 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 	y = _y;
 	isWhite = _isWhite;
 
+	/*
 	if (isWhite)
 	{
 		sprite = assetManager.bishopSpriteWhite; // Use the asset manager to get the white bishop sprite
@@ -14,8 +15,12 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 	else
 	{
 		sprite = assetManager.bishopSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}
+	}*/
+
+	string key = isWhite ? "bishop_white" : "bishop_black";
+	sprite = assetManager.getSprite(key);
 	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
+
 }
 
 vector<Tile> Bishop::getPossibleMoves(const Tile tiles[8][8]) const
