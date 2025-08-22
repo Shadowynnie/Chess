@@ -14,7 +14,7 @@ King::King(int _x, int _y, bool _isWhite)
 	{
 		sprite = assetManager.kingSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}
-	sprite.setPosition(sf::Vector2f(1.f, 1.f));
+	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
 }
 
 vector<Tile> King::getPossibleMoves(const Tile tiles[8][8]) const

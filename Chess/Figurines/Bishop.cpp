@@ -15,7 +15,7 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 	{
 		sprite = assetManager.bishopSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}
-	sprite.setPosition(sf::Vector2f(float(x*64), float(x * 64)));
+	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
 }
 
 vector<Tile> Bishop::getPossibleMoves(const Tile tiles[8][8]) const

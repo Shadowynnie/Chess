@@ -29,30 +29,30 @@ void GameManager::InitializeBoard()
 
 	// Initialize player 1 figures (white)
 	player1figures.push_back(new Rook(0, 0, true));
-	player1figures.push_back(new Knight(0, 1, true));
-	player1figures.push_back(new Bishop(0, 2, true));
-	player1figures.push_back(new Queen(0, 3, true));
-	player1figures.push_back(new King(0, 4, true));
-	player1figures.push_back(new Bishop(0, 5, true));
-	player1figures.push_back(new Knight(0, 6, true));
-	player1figures.push_back(new Rook(0, 7, true));
+	player1figures.push_back(new Knight(1, 0, true));
+	player1figures.push_back(new Bishop(2, 0, true));
+	player1figures.push_back(new Queen(3, 0, true));
+	player1figures.push_back(new King(4, 0, true));
+	player1figures.push_back(new Bishop(5, 0, true));
+	player1figures.push_back(new Knight(6, 0, true));
+	player1figures.push_back(new Rook(7, 0, true));
 	for (int i = 0; i < 8; ++i) 
 	{
-		player1figures.push_back(new Pawn(1, i, true));
+		player1figures.push_back(new Pawn(i, 1, true));
 	}
 
 	// Initialize player 2 figures (black)
-	player2figures.push_back(new Rook(7, 0, false));
-	player2figures.push_back(new Knight(7, 1, false));
-	player2figures.push_back(new Bishop(7, 2, false));
-	player2figures.push_back(new Queen(7, 3, false));
-	player2figures.push_back(new King(7, 4, false));
-	player2figures.push_back(new Bishop(7, 5, false));
-	player2figures.push_back(new Knight(7, 6, false));
+	player2figures.push_back(new Rook(0, 7, false));
+	player2figures.push_back(new Knight(1, 7, false));
+	player2figures.push_back(new Bishop(2, 7, false));
+	player2figures.push_back(new Queen(4, 7, false));
+	player2figures.push_back(new King(3, 7, false));
+	player2figures.push_back(new Bishop(5, 7, false));
+	player2figures.push_back(new Knight(6, 7, false));
 	player2figures.push_back(new Rook(7, 7, false));
 	for (int i = 0; i < 8; ++i) 
 	{
-		player2figures.push_back(new Pawn(6, i, false));
+		player2figures.push_back(new Pawn(i, 6, false));
 	}
 	
 	// Set hasFigure for tiles with figures
