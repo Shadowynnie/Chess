@@ -16,8 +16,8 @@ Queen::Queen(int _x, int _y, bool _isWhite)
 		sprite = assetManager.queenSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}*/
 	string key = isWhite ? "queen_white" : "queen_black";
-	sprite = assetManager.getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
+	sprite = AssetManager::getSprite(key);
+	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
 }
 
 vector<Tile> Queen::getPossibleMoves(const Tile tiles[8][8]) const

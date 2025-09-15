@@ -18,8 +18,8 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 	}*/
 
 	string key = isWhite ? "bishop_white" : "bishop_black";
-	sprite = assetManager.getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 64), float(y * 64)));
+	sprite = AssetManager::getSprite(key);
+	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
 
 }
 

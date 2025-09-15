@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "GameManager.h"
+#include "AssetManager.h"
 #include "Chess.h"
 #include  "Tile.h"
 #include "Figurines/Figure.h"
@@ -20,9 +21,9 @@ using std::vector;
 
 int main()
 {
-
 	GameManager gameManager;
-	gameManager.InitializeBoard();
+	//AssetManager::loadTextures();
+	//gameManager.InitializeBoard();
 	gameManager.Update();
 	return 0;
 }

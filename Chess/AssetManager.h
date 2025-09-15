@@ -14,12 +14,12 @@ using std::map;
 class AssetManager
 {
 public:
-    AssetManager();
-
     // Accessors
-    const sf::Texture& getTexture(const string& key) const;
-    sf::Sprite getSprite(const string& key) const;
+    static const sf::Texture& getTexture(const string& key);
+    static sf::Sprite getSprite(const string& key);
+    static void loadTextures();
 
 private:
-    map<string, sf::Texture> textures;
+	static map<string, string> fileNames;
+    static map<string, sf::Texture> textures;
 };

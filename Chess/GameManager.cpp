@@ -20,65 +20,11 @@ GameManager::~GameManager()
 	}
 }
 
-/*
-void GameManager::InitializeBoard() 
-{
-	// Initialize tiles
-	for (int i = 0; i < 8; ++i) 
-	{
-		for (int j = 0; j < 8; ++j) 
-		{
-			tiles[i][j] = Tile(i, j, false);
-		}
-	}
-
-	// Initialize player 1 figures (white)
-	player1figures.push_back(new Rook(0, 0, true));
-	player1figures.push_back(new Knight(1, 0, true));
-	player1figures.push_back(new Bishop(2, 0, true));
-	player1figures.push_back(new Queen(3, 0, true));
-	player1figures.push_back(new King(4, 0, true));
-	player1figures.push_back(new Bishop(5, 0, true));
-	player1figures.push_back(new Knight(6, 0, true));
-	player1figures.push_back(new Rook(7, 0, true));
-	for (int i = 0; i < 8; ++i) 
-	{
-		player1figures.push_back(new Pawn(i, 1, true));
-	}
-
-	// Initialize player 2 figures (black)
-	player2figures.push_back(new Rook(0, 7, false));
-	player2figures.push_back(new Knight(1, 7, false));
-	player2figures.push_back(new Bishop(2, 7, false));
-	player2figures.push_back(new Queen(4, 7, false));
-	player2figures.push_back(new King(3, 7, false));
-	player2figures.push_back(new Bishop(5, 7, false));
-	player2figures.push_back(new Knight(6, 7, false));
-	player2figures.push_back(new Rook(7, 7, false));
-	for (int i = 0; i < 8; ++i) 
-	{
-		player2figures.push_back(new Pawn(i, 6, false));
-	}
-
-	// Mark tiles that have figures (both players)
-	auto markTiles = [&](const std::vector<Figure*>& figs) 
-	{
-		for (auto figure : figs)
-		{
-			int fx = figure->getSprite().getPosition().x / 64;
-			int fy = figure->getSprite().getPosition().y / 64;
-			if (fx >= 0 && fx < 8 && fy >= 0 && fy < 8)
-			{
-				tiles[fx][fy].hasFigure = true;
-			}
-		}
-	};
-	markTiles(player1figures);
-	markTiles(player2figures);
-}*/
-
 void GameManager::InitializeBoard()
 {
+	// Load all textures at the start
+	AssetManager::loadTextures();
+
 	// Initialize tiles
 	for (int i = 0; i < 8; ++i)
 	{
@@ -140,8 +86,8 @@ void GameManager::Draw(sf::RenderWindow& window)
 	{
 		for (int j = 0; j < 8; ++j) 
 		{
-			sf::RectangleShape tileShape(sf::Vector2f(64, 64));
-			tileShape.setPosition(sf::Vector2f(float(i * 64), float(j * 64)));
+			sf::RectangleShape tileShape(sf::Vector2f(128, 128));
+			tileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
 			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
 			window.draw(tileShape);
 		}
@@ -167,7 +113,7 @@ void GameManager::Update()
 	/* TODO: Handle input events, update game state*/
 	// Update game state (e.g., check for win conditions, update figure positions)
 	// This function can be expanded to include game logic
-	sf::RenderWindow window(sf::VideoMode({ 512,512 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
+	sf::RenderWindow window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
 
 	while (window.isOpen())
 	{
