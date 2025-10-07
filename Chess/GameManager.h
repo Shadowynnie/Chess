@@ -32,8 +32,9 @@ public:
 	GameManager(); // Constructor to initialize the game manager
 	~GameManager(); // Destructor to clean up dynamically allocated memory
 	void InitializeBoard(); // Function to initialize the chessboard with tiles and figures
-	void Draw(sf::RenderWindow& window); // Function to draw the chessboard and figures on the window
+	void Draw(sf::RenderWindow& window, GameState gameState); // Function to draw the chessboard and figures on the window
 	void HandleInput(sf::Event event); // Function to handle user input events
 	void Update(); // Function to update the game state
+    void MainMenu(); // Function to display the main menu
 	void ResetGame(); // Function to reset the game state
 };

@@ -4,6 +4,7 @@
 map<string, sf::Texture> AssetManager::_textures;
 
 map<string, string> AssetManager::_fileNames = {
+    // Load chess piece assets
 	{ "pawn_white",   "Assets/pawn_white.png" },
 	{ "rook_white",   "Assets/rook_white.png" },
 	{ "knight_white", "Assets/knight_white.png" },
@@ -15,7 +16,12 @@ map<string, string> AssetManager::_fileNames = {
 	{ "knight_black", "Assets/knight_black.png" },
 	{ "bishop_black", "Assets/bishop_black.png" },
 	{ "queen_black",  "Assets/queen_black.png" },
-	{ "king_black",   "Assets/king_black.png" }
+	{ "king_black",   "Assets/king_black.png" },
+	// Load Main Menu assets
+	{ "menu_background", "Assets/MenuBackground.png" },
+	{ "menu_host", "Assets/MenuHostGame.png" },
+	{ "menu_join", "Assets/MenuJoinGame.png" },
+    { "menu_quit", "Assets/MenuQuit.png" },
 };
 
 void AssetManager::LoadTextures() 

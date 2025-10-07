@@ -10,8 +10,8 @@
 using std::string;
 using std::vector;
 
-static const char* TexturePathWhite = ""; // Path to white texture
-static const char* TexturePathBlack = ""; // Path to black texture
+//static const char* TexturePathWhite = ""; // Path to white texture
+//static const char* TexturePathBlack = ""; // Path to black texture
 //static AssetManager assetManager; // Asset manager instance to handle textures
 
 class Figure

@@ -23,7 +23,7 @@ int main()
 {
 	GameManager gameManager;
 	//AssetManager::loadTextures();
-	//gameManager.InitializeBoard();
+	gameManager.InitializeBoard();
 	gameManager.Update();
 	return 0;
 }

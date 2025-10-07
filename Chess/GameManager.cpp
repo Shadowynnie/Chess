@@ -1,12 +1,31 @@
 #include "GameManager.h"
 
 
-enum class PieceType { Rook, Knight, Bishop, Queen, King, Pawn };
-
-GameManager::GameManager() 
+/* TODO: Handle input events, update game state*/
+// Update game state (e.g., check for win conditions, update figure positions)
+enum class GameState
 {
-	InitializeBoard();
-}
+	MAIN_MENU,
+	HOST_GAME,
+	CONNECT_TO_GAME,
+	PLAYING,
+	GAME_OVER,
+	CLOSED
+};
+
+enum class PieceType 
+{
+	ROOK,
+	KNIGHT,
+	BISHOP,
+	QUEEN,
+	KING,
+	PAWN
+};
+
+GameManager::GameManager() : _tiles{}, _playerOneFigures{}, _playerTwoFigures{}
+{}
+
 GameManager::~GameManager() 
 {
 	// Clean up dynamically allocated memory for figures
@@ -36,18 +55,18 @@ void GameManager::InitializeBoard()
 
 	// Factory map for all piece types, this can replace switch-case or if-else chains
 	map<PieceType, function<Figure* (int, int, bool)>> factories = {
-		{ PieceType::Rook,   [](int x,int y,bool w) { return new Rook(x,y,w); } },
-		{ PieceType::Knight, [](int x,int y,bool w) { return new Knight(x,y,w); } },
-		{ PieceType::Bishop, [](int x,int y,bool w) { return new Bishop(x,y,w); } },
-		{ PieceType::Queen,  [](int x,int y,bool w) { return new Queen(x,y,w); } },
-		{ PieceType::King,   [](int x,int y,bool w) { return new King(x,y,w); } },
-		{ PieceType::Pawn,   [](int x,int y,bool w) { return new Pawn(x,y,w); } },
+		{ PieceType::ROOK,   [](int x,int y,bool w) { return new Rook(x,y,w); } },
+		{ PieceType::KNIGHT, [](int x,int y,bool w) { return new Knight(x,y,w); } },
+		{ PieceType::BISHOP, [](int x,int y,bool w) { return new Bishop(x,y,w); } },
+		{ PieceType::QUEEN,  [](int x,int y,bool w) { return new Queen(x,y,w); } },
+		{ PieceType::KING,   [](int x,int y,bool w) { return new King(x,y,w); } },
+		{ PieceType::PAWN,   [](int x,int y,bool w) { return new Pawn(x,y,w); } },
 	};
 
 	// Back rank layout
 	std::array<PieceType, 8> backRank = {
-		PieceType::Rook, PieceType::Knight, PieceType::Bishop, PieceType::Queen,
-		PieceType::King, PieceType::Bishop, PieceType::Knight, PieceType::Rook
+		PieceType::ROOK, PieceType::KNIGHT, PieceType::BISHOP, PieceType::QUEEN,
+		PieceType::KING, PieceType::BISHOP, PieceType::KNIGHT, PieceType::ROOK
 	};
 
 	// Helper lambda for player initialization
@@ -69,7 +88,7 @@ void GameManager::InitializeBoard()
 		// Pawns
 		for (int file = 0; file < 8; ++file)
 		{
-			Figure* fig = factories[PieceType::Pawn](file, pawnRow, isWhite);
+			Figure* fig = factories[PieceType::PAWN](file, pawnRow, isWhite);
 			figures.push_back(fig);
 			_tiles[file][pawnRow].SetFigure(true);
 		}
@@ -79,7 +98,7 @@ void GameManager::InitializeBoard()
 	initPlayer(false);  // Black
 }
 
-void GameManager::Draw(sf::RenderWindow& window) 
+void GameManager::Draw(sf::RenderWindow& window, GameState gameState) 
 {
 	// Draw tiles
 	for (int i = 0; i < 8; ++i) 
@@ -105,16 +124,15 @@ void GameManager::Draw(sf::RenderWindow& window)
 
 void GameManager::HandleInput(sf::Event event) 
 {
-	/*TODO: Handle input events (clicking on a figure, etc)*/
+	/*Handle input events (clicking on a figure, etc)*/
 }
 
 void GameManager::Update() 
 {
-	/* TODO: Handle input events, update game state*/
-	// Update game state (e.g., check for win conditions, update figure positions)
 	// This function can be expanded to include game logic
 	sf::RenderWindow window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
 
+    // MAIN GAME LOOP
 	while (window.isOpen())
 	{
 
@@ -135,6 +153,20 @@ void GameManager::Update()
 		window.display();
 
 	}
+}
+
+// Display main menu (host game, join game, quit)
+void GameManager::MainMenu() 
+{
+	
+}
+
+// Reset game state to initial conditions
+void GameManager::ResetGame() 
+{
+	_playerOneFigures.clear();
+	_playerTwoFigures.clear();
+	InitializeBoard();
 }
 
 /* // Debug draw with red circles on tiles that have figures
