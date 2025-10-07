@@ -2,9 +2,9 @@
 
 King::King(int _x, int _y, bool _isWhite)
 {
-	x = _x;
-	y = _y;
-	isWhite = _isWhite;
+	X = _x;
+	Y = _y;
+	IsWhite = _isWhite;
 
 	/*
 	if (isWhite)
@@ -15,12 +15,12 @@ King::King(int _x, int _y, bool _isWhite)
 	{
 		sprite = assetManager.kingSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}*/
-	string key = isWhite ? "king_white" : "king_black";
-	sprite = AssetManager::getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
+	string key = IsWhite ? "king_white" : "king_black";
+	Sprite = AssetManager::GetSprite(key);
+	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> King::getPossibleMoves(const Tile tiles[8][8]) const
+vector<Tile> King::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile> possibleMoves;
 	// Check all adjacent squares (8 directions)
@@ -29,14 +29,14 @@ vector<Tile> King::getPossibleMoves(const Tile tiles[8][8]) const
 		for (int dy = -1; dy <= 1; dy++)
 		{
 			if (dx == 0 && dy == 0) continue; // Skip the current position
-			int newX = x + dx;
-			int newY = y + dy;
+			int newX = X + dx;
+			int newY = Y + dy;
 			if (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
 			{
 				if (!tiles[newX][newY].HasFigure() ||
 					(tiles[newX][newY].HasFigure() &&
-						((isWhite && !tiles[newX][newY].HasFigure()) ||
-							(!isWhite && tiles[newX][newY].HasFigure()))))
+						((IsWhite && !tiles[newX][newY].HasFigure()) ||
+							(!IsWhite && tiles[newX][newY].HasFigure()))))
 				{
 					possibleMoves.push_back(tiles[newX][newY]);
 				}

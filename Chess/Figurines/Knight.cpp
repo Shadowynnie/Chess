@@ -2,9 +2,9 @@
 
 Knight::Knight(int _x, int _y, bool _isWhite)
 {
-	x = _x;
-	y = _y;
-	isWhite = _isWhite;
+	X = _x;
+	Y = _y;
+	IsWhite = _isWhite;
 	
 	/*
 	if (isWhite)
@@ -15,12 +15,12 @@ Knight::Knight(int _x, int _y, bool _isWhite)
 	{
 		sprite = assetManager.knightSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}*/
-	string key = isWhite ? "knight_white" : "knight_black";
-	sprite = AssetManager::getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
+	string key = IsWhite ? "knight_white" : "knight_black";
+	Sprite = AssetManager::GetSprite(key);
+	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> Knight::getPossibleMoves(const Tile tiles[8][8]) const
+vector<Tile> Knight::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile> possibleMoves;
 	// Knight moves in an "L" shape: two squares in one direction and one square perpendicular
@@ -30,14 +30,14 @@ vector<Tile> Knight::getPossibleMoves(const Tile tiles[8][8]) const
 	};
 	for (const auto& move : knightMoves)
 	{
-		int newX = x + move[0];
-		int newY = y + move[1];
+		int newX = X + move[0];
+		int newY = Y + move[1];
 		if (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
 		{
 			if (!tiles[newX][newY].HasFigure() || 
 				(tiles[newX][newY].HasFigure() && 
-				((isWhite && !tiles[newX][newY].HasFigure()) || 
-				(!isWhite && tiles[newX][newY].HasFigure()))))
+				((IsWhite && !tiles[newX][newY].HasFigure()) || 
+				(!IsWhite && tiles[newX][newY].HasFigure()))))
 			{
 				possibleMoves.push_back(tiles[newX][newY]);
 			}

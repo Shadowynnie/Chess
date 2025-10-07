@@ -1,9 +1,9 @@
 #include "AssetManager.h"
 
 
-map<string, sf::Texture> AssetManager::textures;
+map<string, sf::Texture> AssetManager::_textures;
 
-map<string, string> AssetManager::fileNames = {
+map<string, string> AssetManager::_fileNames = {
 	{ "pawn_white",   "Assets/pawn_white.png" },
 	{ "rook_white",   "Assets/rook_white.png" },
 	{ "knight_white", "Assets/knight_white.png" },
@@ -18,9 +18,9 @@ map<string, string> AssetManager::fileNames = {
 	{ "king_black",   "Assets/king_black.png" }
 };
 
-void AssetManager::loadTextures() 
+void AssetManager::LoadTextures() 
 {
-	for (auto& [key, path] : fileNames)
+	for (auto& [key, path] : _fileNames)
 	{
 		sf::Texture tex;
 		if (!tex.loadFromFile(path))
@@ -31,20 +31,20 @@ void AssetManager::loadTextures()
 		{
 			cout << "Loaded " << path << endl;
 			tex.setSmooth(true);
-			textures[key] = tex;
+			_textures[key] = tex;
 		}
 	}
 }
 
 // Accessors
-const sf::Texture& AssetManager::getTexture(const string& key)
+sf::Texture& AssetManager::GetTexture(const string& key)
 {
-	return textures.at(key);
+	return _textures.at(key);
 }
 
-sf::Sprite AssetManager::getSprite(const string& key)
+sf::Sprite AssetManager::GetSprite(const string& key)
 {
-	sf::Sprite sprite(textures.at(key));
+	sf::Sprite sprite(_textures.at(key));
 	sprite.setScale(sf::Vector2f(0.5f, 0.5f));
 	return sprite;
 }

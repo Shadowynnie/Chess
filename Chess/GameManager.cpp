@@ -10,11 +10,11 @@ GameManager::GameManager()
 GameManager::~GameManager() 
 {
 	// Clean up dynamically allocated memory for figures
-	for (auto figure : player1figures) 
+	for (auto figure : _playerOneFigures) 
 	{
 		delete figure;
 	}
-	for (auto figure : player2figures) 
+	for (auto figure : _playerTwoFigures) 
 	{
 		delete figure;
 	}
@@ -23,14 +23,14 @@ GameManager::~GameManager()
 void GameManager::InitializeBoard()
 {
 	// Load all textures at the start
-	AssetManager::loadTextures();
+	AssetManager::LoadTextures();
 
 	// Initialize tiles
 	for (int i = 0; i < 8; ++i)
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			tiles[i][j] = Tile(i, j, false);
+			_tiles[i][j] = Tile(i, j, false);
 		}
 	}
 
@@ -55,7 +55,7 @@ void GameManager::InitializeBoard()
 	{
 		int backRankRow = isWhite ? 0 : 7;
 		int pawnRow = isWhite ? 1 : 6;
-		auto& figures = isWhite ? player1figures : player2figures;
+		auto& figures = isWhite ? _playerOneFigures : _playerTwoFigures;
 
 		// Back rank
 		for (int file = 0; file < 8; ++file)
@@ -63,7 +63,7 @@ void GameManager::InitializeBoard()
 			PieceType type = backRank[file];
 			Figure* fig = factories[type](file, backRankRow, isWhite);
 			figures.push_back(fig);
-			tiles[file][backRankRow].hasFigure = true;
+			_tiles[file][backRankRow].SetFigure(true);
 		}
 
 		// Pawns
@@ -71,7 +71,7 @@ void GameManager::InitializeBoard()
 		{
 			Figure* fig = factories[PieceType::Pawn](file, pawnRow, isWhite);
 			figures.push_back(fig);
-			tiles[file][pawnRow].hasFigure = true;
+			_tiles[file][pawnRow].SetFigure(true);
 		}
 	};
 
@@ -93,13 +93,13 @@ void GameManager::Draw(sf::RenderWindow& window)
 		}
 	}
 	// Draw figures
-	for (auto figure : player1figures) 
+	for (auto figure : _playerOneFigures) 
 	{
-		window.draw(figure->getSprite());
+		window.draw(figure->GetSprite());
 	}
-	for (auto figure : player2figures) 
+	for (auto figure : _playerTwoFigures) 
 	{
-		window.draw(figure->getSprite());
+		window.draw(figure->GetSprite());
 	}
 }
 

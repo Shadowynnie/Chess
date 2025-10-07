@@ -10,25 +10,23 @@
 using std::string;
 using std::vector;
 
-static const char* texturePathWhite = ""; // Path to white texture
-static const char* texturePathBlack = ""; // Path to black texture
+static const char* TexturePathWhite = ""; // Path to white texture
+static const char* TexturePathBlack = ""; // Path to black texture
 //static AssetManager assetManager; // Asset manager instance to handle textures
 
 class Figure
 {
-
 protected:
-
-	sf::Sprite sprite;
-	sf::Texture texture;
-	int x; // X position on the board
-	int y; // Y position on the board
-	bool isWhite; // True if the figurine is white, false if black
+	sf::Sprite Sprite;
+	sf::Texture Texture;
+	int X; // X position on the board
+	int Y; // Y position on the board
+	bool IsWhite; // True if the figurine is white, false if black
 public:
-	Figure(int _x, int _y, bool _isWhite); // Constructor
-	Figure() : x(0), y(0), isWhite(true), sprite(texture) {} // Default constructor
+	Figure(int x, int y, bool isWhite); // Constructor
+	Figure() : X(0), Y(0), IsWhite(true), Sprite(Texture) {} // Default constructor
 	virtual ~Figure() = default; // Virtual destructor for proper cleanup of derived classes
-	virtual void move(int newX, int newY);
-	virtual vector<Tile> getPossibleMoves(const Tile tiles[8][8]) const = 0; // Pure virtual function to get possible moves
-	virtual sf::Sprite getSprite() const;
+	virtual void Move(int newX, int newY);
+	virtual vector<Tile> GetPossibleMoves(Tile tiles[8][8]) = 0; // Pure virtual function to get possible moves
+	virtual sf::Sprite GetSprite() const;
 };

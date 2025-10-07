@@ -15,11 +15,11 @@ class AssetManager
 {
 public:
     // Accessors
-    static const sf::Texture& getTexture(const string& key);
-    static sf::Sprite getSprite(const string& key);
-    static void loadTextures();
+    static sf::Texture& GetTexture(const string& key);
+    static sf::Sprite GetSprite(const string& key);
+    static void LoadTextures();
 
 private:
-	static map<string, string> fileNames;
-    static map<string, sf::Texture> textures;
+	static map<string, string> _fileNames;
+    static map<string, sf::Texture> _textures;
 };

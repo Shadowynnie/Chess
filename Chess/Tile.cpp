@@ -1,29 +1,34 @@
 #include "Tile.h"
 
-Tile::Tile(int _x, int _y, bool _hasFigure) 
+Tile::Tile(int x, int y, bool hasFigure) 
 {
-	x = _x;
-	y = _y;
-	hasFigure = _hasFigure;
+	_x = x;
+	_y = y;
+	_hasFigure = hasFigure;
 }
 
-bool Tile::HasFigure() const 
+bool Tile::HasFigure() 
 {
-	return hasFigure;
+	return _hasFigure;
+}
+
+void Tile::SetFigure(bool hasFigure)
+{
+	_hasFigure = hasFigure;
 }
 
 int Tile::GetX() const 
 {
-	return x;
+	return _x;
 }
 
 int Tile::GetY() const 
 {
-	return y;
+	return _y;
 }
 
-void Tile::SetPosition(int _x, int _y) 
+void Tile::SetPosition(int x, int y) 
 {
-	x = _x;
-	y = _y;
+	_x = x;
+	_y = y;
 }

@@ -2,9 +2,9 @@
 
 Rook::Rook(int _x, int _y, bool _isWhite)
 {
-	x = _x;
-	y = _y;
-	isWhite = _isWhite;
+	X = _x;
+	Y = _y;
+	IsWhite = _isWhite;
 
 	/*
 	if (isWhite)
@@ -15,30 +15,30 @@ Rook::Rook(int _x, int _y, bool _isWhite)
 	{
 		sprite = assetManager.rookSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}*/
-	string key = isWhite ? "rook_white" : "rook_black";
-	sprite = AssetManager::getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
+	string key = IsWhite ? "rook_white" : "rook_black";
+	Sprite = AssetManager::GetSprite(key);
+	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> Rook::getPossibleMoves(const Tile tiles[8][8]) const
+vector<Tile> Rook::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile> possibleMoves;
 	// Check horizontal and vertical directions
 	for (int dx = -1; dx <= 1; dx += 2) // Horizontal movement
 	{
-		int newX = x + dx;
+		int newX = X + dx;
 		while (newX >= 0 && newX < 8)
 		{
-			if (!tiles[newX][y].HasFigure())
+			if (!tiles[newX][Y].HasFigure())
 			{
-				possibleMoves.push_back(tiles[newX][y]);
+				possibleMoves.push_back(tiles[newX][Y]);
 			}
 			else
 			{
 				// If there's a figure, we can capture it if it's of the opposite color
-				if ((isWhite && !tiles[newX][y].HasFigure()) || (!isWhite && tiles[newX][y].HasFigure()))
+				if ((IsWhite && !tiles[newX][Y].HasFigure()) || (!IsWhite && tiles[newX][Y].HasFigure()))
 				{
-					possibleMoves.push_back(tiles[newX][y]);
+					possibleMoves.push_back(tiles[newX][Y]);
 				}
 				break; // Stop checking this direction after encountering a figure
 			}
@@ -49,19 +49,19 @@ vector<Tile> Rook::getPossibleMoves(const Tile tiles[8][8]) const
 	// Vertical movement
 	for (int dy = -1; dy <= 1; dy += 2) 
 	{
-		int newY = y + dy;
+		int newY = Y + dy;
 		while (newY >= 0 && newY < 8)
 		{
-			if (!tiles[x][newY].HasFigure())
+			if (!tiles[X][newY].HasFigure())
 			{
-				possibleMoves.push_back(tiles[x][newY]);
+				possibleMoves.push_back(tiles[X][newY]);
 			}
 			else
 			{
 				// If there's a figure, we can capture it if it's of the opposite color
-				if ((isWhite && !tiles[x][newY].HasFigure()) || (!isWhite && tiles[x][newY].HasFigure()))
+				if ((IsWhite && !tiles[X][newY].HasFigure()) || (!IsWhite && tiles[X][newY].HasFigure()))
 				{
-					possibleMoves.push_back(tiles[x][newY]);
+					possibleMoves.push_back(tiles[X][newY]);
 				}
 				break; // Stop checking this direction after encountering a figure
 			}

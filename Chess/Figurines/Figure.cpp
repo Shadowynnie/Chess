@@ -1,23 +1,23 @@
 #include "Figure.h"
 
-Figure::Figure(int _x, int _y, bool _isWhite) : sprite(texture)
+Figure::Figure(int x, int y, bool isWhite) : Sprite(Texture)
 {
-	x = _x;
-	y = _y;
-	isWhite = _isWhite;
+	X = x;
+	Y = y;
+	IsWhite = isWhite;
 	// Load the texture based on the color of the figure
-	sprite.setTexture(texture);
+	Sprite.setTexture(Texture);
 }
 
-sf::Sprite Figure::getSprite() const
+sf::Sprite Figure::GetSprite() const
 {
-	return sprite;
+	return Sprite;
 }
 
-void Figure::move(int newX, int newY)
+void Figure::Move(int newX, int newY)
 {
 	// Update the position of the figurine
-	x = newX;
-	y = newY;
-	sprite.setPosition(sf::Vector2f(static_cast<float>(x * 64), static_cast<float>(y * 64))); // Update sprite position
+	X = newX;
+	Y = newY;
+	Sprite.setPosition(sf::Vector2f(static_cast<float>(X * 64), static_cast<float>(Y * 64))); // Update sprite position
 }

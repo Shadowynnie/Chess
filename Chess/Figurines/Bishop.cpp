@@ -3,9 +3,9 @@
 
 Bishop::Bishop(int _x, int _y, bool _isWhite)
 {
-	x = _x;
-	y = _y;
-	isWhite = _isWhite;
+	X = _x;
+	Y = _y;
+	IsWhite = _isWhite;
 
 	/*
 	if (isWhite)
@@ -17,13 +17,13 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 		sprite = assetManager.bishopSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}*/
 
-	string key = isWhite ? "bishop_white" : "bishop_black";
-	sprite = AssetManager::getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
+	string key = IsWhite ? "bishop_white" : "bishop_black";
+	Sprite = AssetManager::GetSprite(key);
+	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 
 }
 
-vector<Tile> Bishop::getPossibleMoves(const Tile tiles[8][8]) const
+vector<Tile> Bishop::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile> possibleMoves;
 	// Check diagonals in all four directions
@@ -31,8 +31,8 @@ vector<Tile> Bishop::getPossibleMoves(const Tile tiles[8][8]) const
 	{
 		for (int dy = -1; dy <= 1; dy += 2)
 		{
-			int newX = x + dx;
-			int newY = y + dy;
+			int newX = X + dx;
+			int newY = Y + dy;
 			while (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
 			{
 				if (!tiles[newX][newY].HasFigure())
@@ -42,7 +42,7 @@ vector<Tile> Bishop::getPossibleMoves(const Tile tiles[8][8]) const
 				else
 				{
 					// If there's a figure, we can capture it if it's of the opposite color
-					if ((isWhite && !tiles[newX][newY].HasFigure()) || (!isWhite && tiles[newX][newY].HasFigure())) 
+					if ((IsWhite && !tiles[newX][newY].HasFigure()) || (!IsWhite && tiles[newX][newY].HasFigure())) 
 					{
 						possibleMoves.push_back(tiles[newX][newY]);
 					}

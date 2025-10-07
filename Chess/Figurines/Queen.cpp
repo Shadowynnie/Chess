@@ -2,9 +2,9 @@
 
 Queen::Queen(int _x, int _y, bool _isWhite)
 {
-	x = _x;
-	y = _y;
-	isWhite = _isWhite;
+	X = _x;
+	Y = _y;
+	IsWhite = _isWhite;
 	
 	/*
 	if (isWhite)
@@ -15,12 +15,12 @@ Queen::Queen(int _x, int _y, bool _isWhite)
 	{
 		sprite = assetManager.queenSpriteBlack; // Use the asset manager to get the black bishop sprite
 	}*/
-	string key = isWhite ? "queen_white" : "queen_black";
-	sprite = AssetManager::getSprite(key);
-	sprite.setPosition(sf::Vector2f(float(x * 128), float(y * 128)));
+	string key = IsWhite ? "queen_white" : "queen_black";
+	Sprite = AssetManager::GetSprite(key);
+	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> Queen::getPossibleMoves(const Tile tiles[8][8]) const
+vector<Tile> Queen::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile> possibleMoves;
 	// Check all directions: horizontal, vertical, and diagonal
@@ -29,8 +29,8 @@ vector<Tile> Queen::getPossibleMoves(const Tile tiles[8][8]) const
 		for (int dy = -1; dy <= 1; dy++)
 		{
 			if (dx == 0 && dy == 0) continue; // Skip the case where both dx and dy are zero
-			int newX = x + dx;
-			int newY = y + dy;
+			int newX = X + dx;
+			int newY = Y + dy;
 			while (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
 			{
 				if (!tiles[newX][newY].HasFigure())
@@ -40,7 +40,7 @@ vector<Tile> Queen::getPossibleMoves(const Tile tiles[8][8]) const
 				else
 				{
 					// If there's a figure, we can capture it if it's of the opposite color
-					if ((isWhite && !tiles[newX][newY].HasFigure()) || (!isWhite && tiles[newX][newY].HasFigure())) 
+					if ((IsWhite && !tiles[newX][newY].HasFigure()) || (!IsWhite && tiles[newX][newY].HasFigure())) 
 					{
 						possibleMoves.push_back(tiles[newX][newY]);
 					}

@@ -21,14 +21,13 @@ using std::cerr;
 using std::endl;
 using std::cout;
 
-static bool currentRound = true; // True for player 1's turn, false for player 2's turn
+static bool CurrentRound = true; // True for player 1's turn, false for player 2's turn
 
 class GameManager
 {
-	private:
-	Tile tiles[8][8]; // 2D array of tiles representing the chessboard
-	vector<Figure*> player1figures; // Vector to hold player 1 chess pieces
-	vector<Figure*> player2figures; // Vector to hold player 2 chess pieces
+	Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
+	vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces
+	vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces
 public:
 	GameManager(); // Constructor to initialize the game manager
 	~GameManager(); // Destructor to clean up dynamically allocated memory
