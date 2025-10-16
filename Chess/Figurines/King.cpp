@@ -20,26 +20,26 @@ King::King(int _x, int _y, bool _isWhite)
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> King::GetPossibleMoves(Tile tiles[8][8])
+vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 {
-	vector<Tile> possibleMoves;
-	// Check all adjacent squares (8 directions)
-	for (int dx = -1; dx <= 1; dx++)
+	vector<Tile*> possibleMoves;
+	// King moves one square in any direction
+	int kingMoves[8][2] = {
+		{1, 0}, {-1, 0}, {0, 1}, {0, -1},
+		{1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+	};
+	for (const auto& move : kingMoves)
 	{
-		for (int dy = -1; dy <= 1; dy++)
+		int newX = X + move[0];
+		int newY = Y + move[1];
+		if (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
 		{
-			if (dx == 0 && dy == 0) continue; // Skip the current position
-			int newX = X + dx;
-			int newY = Y + dy;
-			if (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
+			if (!tiles[newX][newY].IsOccupied() ||
+				(tiles[newX][newY].IsOccupied() &&
+				 (tiles[newX][newY].GetFigure() != nullptr && 
+				  tiles[newX][newY].GetFigure()->GetColor() != IsWhite)))
 			{
-				if (!tiles[newX][newY].HasFigure() ||
-					(tiles[newX][newY].HasFigure() &&
-						((IsWhite && !tiles[newX][newY].HasFigure()) ||
-							(!IsWhite && tiles[newX][newY].HasFigure()))))
-				{
-					possibleMoves.push_back(tiles[newX][newY]);
-				}
+				possibleMoves.push_back(&tiles[newX][newY]);
 			}
 		}
 	}

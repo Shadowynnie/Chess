@@ -18,10 +18,10 @@ map<string, string> AssetManager::_fileNames = {
 	{ "queen_black",  "Assets/queen_black.png" },
 	{ "king_black",   "Assets/king_black.png" },
 	// Load Main Menu assets
-	{ "menu_background", "Assets/MenuBackground.png" },
 	{ "menu_host", "Assets/MenuHostGame.png" },
 	{ "menu_join", "Assets/MenuJoinGame.png" },
     { "menu_quit", "Assets/MenuQuit.png" },
+	{ "menu_singleplayer", "Assets/MenuSingleplayer.png" }
 };
 
 void AssetManager::LoadTextures() 

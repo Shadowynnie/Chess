@@ -20,35 +20,33 @@ Pawn::Pawn(int _x, int _y, bool _isWhite)
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> Pawn::GetPossibleMoves(Tile tiles[8][8])
+vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
 {
-	vector<Tile> possibleMoves;
-	int direction = IsWhite ? -1 : 1; // White moves up, black moves down
-	int startRow = IsWhite ? 6 : 1; // Starting row for pawns
-	// Move forward by one square
-	int newX = X + direction;
-	if (newX >= 0 && newX < 8 && !tiles[newX][Y].HasFigure())
+	vector<Tile*> possibleMoves;
+	int direction = IsWhite ? 1 : -1; // White moves "up" (increasing Y), Black moves "down" (decreasing Y)
+	// Move forward one tile
+	if (Y + direction >= 0 && Y + direction < 8 && !tiles[X][Y + direction].IsOccupied())
 	{
-		possibleMoves.push_back(tiles[newX][Y]);
-	}
-	// Move forward by two squares from the starting position
-	if (X == startRow && !tiles[newX][Y].HasFigure() && !tiles[newX + direction][Y].HasFigure())
-	{
-		possibleMoves.push_back(tiles[newX + direction][Y]);
-	}
-	// Capture diagonally
-	for (int dx = -1; dx <= 1; dx += 2)
-	{
-		newX = X + direction;
-		int newY = Y + dx;
-		if (newY >= 0 && newY < 8 && newX >= 0 && newX < 8)
+		possibleMoves.push_back(&tiles[X][Y + direction]);
+		// Move forward two tiles from starting position
+		if ((IsWhite && Y == 1) || (!IsWhite && Y == 6))
 		{
-			if (tiles[newX][newY].HasFigure() &&
-				((IsWhite && !tiles[newX][newY].HasFigure()) || (!IsWhite && tiles[newX][newY].HasFigure())))
+			if (!tiles[X][Y + 2 * direction].IsOccupied())
 			{
-				possibleMoves.push_back(tiles[newX][newY]);
+				possibleMoves.push_back(&tiles[X][Y + 2 * direction]);
 			}
 		}
+	}
+	// Capture diagonally
+	if (X - 1 >= 0 && Y + direction >= 0 && Y + direction < 8 && tiles[X - 1][Y + direction].IsOccupied() &&
+		tiles[X - 1][Y + direction].GetFigure()->GetColor() != IsWhite)
+	{
+		possibleMoves.push_back(&tiles[X - 1][Y + direction]);
+	}
+	if (X + 1 < 8 && Y + direction >= 0 && Y + direction < 8 && tiles[X + 1][Y + direction].IsOccupied() &&
+		tiles[X + 1][Y + direction].GetFigure()->GetColor() != IsWhite)
+	{
+		possibleMoves.push_back(&tiles[X + 1][Y + direction]);
 	}
 	return possibleMoves;
 }

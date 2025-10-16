@@ -1,49 +1,29 @@
 #include "GameManager.h"
-
-
 /* TODO: Handle input events, update game state*/
 // Update game state (e.g., check for win conditions, update figure positions)
-enum class GameState
+
+
+static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
+GameState _currentState;
+static Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
+static vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces
+static vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces
+sf::RenderWindow _window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
+
+// Replaces switch-case or if-else chains for state management
+map<GameState, function<void()>> stateFunctions
 {
-	MAIN_MENU,
-	HOST_GAME,
-	CONNECT_TO_GAME,
-	PLAYING,
-	GAME_OVER,
-	CLOSED
+	{ GameState::MAIN_MENU, [&]() { GameManager::MainMenu(); }},
+	{ GameState::HOST_GAME, []() { GameManager::HostGame(); }},
+	{ GameState::CONNECT_TO_GAME, []() { GameManager::ConnectToGame(); }},
+	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(); }},
+	{ GameState::GAME_OVER, []() { GameManager::DeinitializeBoard(); }},
+	{ GameState::CLOSED, [&]() { _window.close(); } }
 };
 
-enum class PieceType 
-{
-	ROOK,
-	KNIGHT,
-	BISHOP,
-	QUEEN,
-	KING,
-	PAWN
-};
-
-GameManager::GameManager() : _tiles{}, _playerOneFigures{}, _playerTwoFigures{}
-{}
-
-GameManager::~GameManager() 
-{
-	// Clean up dynamically allocated memory for figures
-	for (auto figure : _playerOneFigures) 
-	{
-		delete figure;
-	}
-	for (auto figure : _playerTwoFigures) 
-	{
-		delete figure;
-	}
-}
-
+// Initialize the chessboard with tiles and figures for both players
 void GameManager::InitializeBoard()
 {
-	// Load all textures at the start
-	AssetManager::LoadTextures();
-
 	// Initialize tiles
 	for (int i = 0; i < 8; ++i)
 	{
@@ -82,119 +62,206 @@ void GameManager::InitializeBoard()
 			PieceType type = backRank[file];
 			Figure* fig = factories[type](file, backRankRow, isWhite);
 			figures.push_back(fig);
-			_tiles[file][backRankRow].SetFigure(true);
-		}
-
+			_tiles[file][backRankRow].SetFigure(fig);
+        }
 		// Pawns
 		for (int file = 0; file < 8; ++file)
 		{
 			Figure* fig = factories[PieceType::PAWN](file, pawnRow, isWhite);
 			figures.push_back(fig);
-			_tiles[file][pawnRow].SetFigure(true);
-		}
+			_tiles[file][pawnRow].SetFigure(fig);
+        }
 	};
 
 	initPlayer(true);   // White
 	initPlayer(false);  // Black
+    cout << "Board initialized with pieces." << endl;
 }
 
-void GameManager::Draw(sf::RenderWindow& window, GameState gameState) 
+void GameManager::DeinitializeBoard()
 {
-	// Draw tiles
-	for (int i = 0; i < 8; ++i) 
+	// Clean up dynamically allocated memory for figures
+	for (auto& figures : { _playerOneFigures, _playerTwoFigures })
 	{
-		for (int j = 0; j < 8; ++j) 
-		{
-			sf::RectangleShape tileShape(sf::Vector2f(128, 128));
-			tileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
-			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
-			window.draw(tileShape);
-		}
+		for (auto figure : figures)
+			delete figure;
 	}
-	// Draw figures
-	for (auto figure : _playerOneFigures) 
-	{
-		window.draw(figure->GetSprite());
-	}
-	for (auto figure : _playerTwoFigures) 
-	{
-		window.draw(figure->GetSprite());
-	}
+	cout << "Board deinitialized and memory cleaned up." << endl;
+    _playerOneFigures.clear();
+    _playerTwoFigures.clear();
 }
 
-void GameManager::HandleInput(sf::Event event) 
-{
-	/*Handle input events (clicking on a figure, etc)*/
-}
-
-void GameManager::Update() 
-{
-	// This function can be expanded to include game logic
-	sf::RenderWindow window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
-
-    // MAIN GAME LOOP
-	while (window.isOpen())
-	{
-
-		std::optional<sf::Event> event;
-		while (event = window.pollEvent())
-		{
-			if (event->is<sf::Event::Closed>() ||
-				(event->is<sf::Event::KeyPressed>() &&
-					event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Escape))
-			{
-				window.close();
-			}
-		}
-		window.clear();
-		Draw(window);
-
-
-		window.display();
-
-	}
-}
-
-// Display main menu (host game, join game, quit)
-void GameManager::MainMenu() 
-{
-	
-}
-
-// Reset game state to initial conditions
-void GameManager::ResetGame() 
-{
-	_playerOneFigures.clear();
-	_playerTwoFigures.clear();
-	InitializeBoard();
-}
-
-/* // Debug draw with red circles on tiles that have figures
-void GameManager::Draw(sf::RenderWindow& window)
+void GameManager::DrawGame(sf::RectangleShape tileShape)
 {
 	// Draw tiles
 	for (int i = 0; i < 8; ++i)
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			sf::RectangleShape tileShape(sf::Vector2f(64, 64));
-			tileShape.setPosition(sf::Vector2f(float(i * 64), float(j * 64)));
+			tileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
 			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
-			window.draw(tileShape);
-
-			// Debug red circle if hasFigure == true
-			if (tiles[i][j].hasFigure)
-			{
-				sf::CircleShape circle(25); // radius = 25px
-				circle.setFillColor(sf::Color::Red);
-				circle.setOrigin(sf::Vector2f(float(circle.getRadius()), float(circle.getRadius())));
-				circle.setPosition(sf::Vector2f(float(i * 64 + 32), float(j * 64 + 32)));
-				window.draw(circle);
-			}
+			_window.draw(tileShape);
 		}
 	}
-
 	// Draw figures
-	for (auto figure : player1figures) window.draw(figure->getSprite());
-	for (auto figure : player2figures) window.draw(figure->getSprite());
-}*/
+	for (auto& figures : { _playerOneFigures, _playerTwoFigures })
+	{
+		for (auto figure : figures)
+			_window.draw(figure->GetSprite());
+	}
+}
+
+void GameManager::Update() 
+{
+    // Tile shape for drawing the board
+	sf::RectangleShape tileShape(sf::Vector2f(128, 128));
+	std::optional<sf::Event> event;
+	sf::Vector2i mousePos;
+
+    // GAME LOOP
+	while (_window.isOpen())
+	{
+		_window.clear();        
+        DrawGame(tileShape);
+        // Handle input events
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+                DeinitializeBoard();
+				_window.close();
+			}
+			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			{
+				_currentState = GameState::MAIN_MENU;
+                stateFunctions[_currentState]();
+			}
+			if (event->is<sf::Event::MouseButtonPressed>() &&
+				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
+			{
+				mousePos = sf::Mouse::getPosition(_window);
+                int tileX = mousePos.x / 128;
+                int tileY = mousePos.y / 128;
+				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
+				{
+					Tile& selectedTile = _tiles[tileX][tileY];
+					if (selectedTile.IsOccupied())
+					{
+						Figure* fig = selectedTile.GetFigure();
+						//cout << "Selected " << (fig->GetColor()? "White " : "Black ") << typeid(*fig).name() << endl;
+						
+                        if (fig->GetColor() == _currentRound) // if the figure color matches the current player's turn
+						{
+							cout << "Player with white figs clicked on a: " << typeid(*fig).name() << endl;
+                            ShowPossibleMoves(fig);
+						}
+						else
+						{
+                            cout << "It's not your turn!" << endl;
+						}
+					}
+                }
+			}
+		}
+		_window.display();
+	}
+}
+
+void GameManager::ShowPossibleMoves(Figure* figure)
+{
+	vector<Tile*> possibleMoves = figure->GetPossibleMoves(_tiles);
+	sf::CircleShape highlight(20.f);
+	highlight.setFillColor(sf::Color(255, 0, 0, 128)); // Semi-transparent red
+	for (Tile* tile : possibleMoves)
+	{
+		highlight.setPosition(sf::Vector2f(tile->GetX() * 128 + 44, tile->GetY() * 128 + 44)); // Center the circle in the tile
+		_window.draw(highlight);
+	}
+}
+
+
+void GameManager::MainMenu()
+{
+	_window.setVerticalSyncEnabled(true);
+    // Buttons
+    sf::Sprite singleplayerButton = AssetManager::GetSprite("menu_singleplayer");
+    singleplayerButton.setPosition(sf::Vector2f(362.f, 150.f));
+	sf::Sprite hostButton = AssetManager::GetSprite("menu_host");
+	hostButton.setPosition(sf::Vector2f(362.f, 300.f));
+	sf::Sprite joinButton = AssetManager::GetSprite("menu_join");
+	joinButton.setPosition(sf::Vector2f(362.f, 450.f));
+	sf::Sprite quitButton = AssetManager::GetSprite("menu_quit");
+	quitButton.setPosition(sf::Vector2f(362.f, 600.f));
+
+	std::optional<sf::Event> event;
+	sf::Vector2i mousePos;
+
+	// MAIN MENU LOOP
+	while (_window.isOpen())
+	{
+		
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+				_window.close();
+			// Handle mouse button press events
+			if (event->is<sf::Event::MouseButtonPressed>() &&
+				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
+			{
+				mousePos = sf::Mouse::getPosition(_window);
+				if (singleplayerButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
+				{
+					cout << "Single player -> player vs computer." << endl;
+					// Transition to singleplayer game state
+                    _currentState = GameState::SINGLEPLAYER;
+				}
+				if (hostButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
+				{
+					cout << "Host Game button clicked!" << endl;
+					// Transition to host game state
+                    _currentState = GameState::HOST_GAME;
+				}
+				else if (joinButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
+				{
+					cout << "Join Game button clicked!" << endl;
+					// Transition to join game state
+                    _currentState = GameState::CONNECT_TO_GAME;
+				}
+				else if (quitButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
+				{
+					cout << "Quit button clicked!" << endl;
+					// Transition to closed state
+                    _currentState = GameState::CLOSED;
+				}
+                // Switch to the selected state and execute its function
+                stateFunctions[_currentState]();
+			}
+		}
+		_window.clear();
+        _window.draw(singleplayerButton);
+		_window.draw(hostButton);
+		_window.draw(joinButton);
+		_window.draw(quitButton);
+		_window.display();
+	}
+}
+
+void GameManager::HostGame()
+{
+	cout << "Hosting a Game..." << endl;
+	// Placeholder for hosting game logic
+}
+
+void GameManager::ConnectToGame()
+{
+	cout << "Connecting to a Game..." << endl;
+	// Placeholder for connecting to game logic
+}
+
+void GameManager::PlayGame()
+{
+	cout << "Starting the Game..." << endl;
+	// Placeholder for game loop logic
+	InitializeBoard();
+    Update();
+}

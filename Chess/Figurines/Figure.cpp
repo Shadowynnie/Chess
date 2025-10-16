@@ -6,7 +6,7 @@ Figure::Figure(int x, int y, bool isWhite) : Sprite(Texture)
 	Y = y;
 	IsWhite = isWhite;
 	// Load the texture based on the color of the figure
-	Sprite.setTexture(Texture);
+	//Sprite.setTexture(Texture);
 }
 
 sf::Sprite Figure::GetSprite() const
@@ -14,10 +14,26 @@ sf::Sprite Figure::GetSprite() const
 	return Sprite;
 }
 
-void Figure::Move(int newX, int newY)
+void Figure::Move(Tile* tile) // Move the figure to the specified tile position
 {
-	// Update the position of the figurine
-	X = newX;
-	Y = newY;
-	Sprite.setPosition(sf::Vector2f(static_cast<float>(X * 64), static_cast<float>(Y * 64))); // Update sprite position
+	if (tile != nullptr)
+	{
+        X = tile->GetX();
+        Y = tile->GetY();
+	}
+}
+
+int Figure::GetX() const
+{
+	return X;
+}
+
+int Figure::GetY() const
+{
+	return Y;
+}
+
+bool Figure::GetColor() const
+{
+	return IsWhite;
 }

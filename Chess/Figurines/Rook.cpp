@@ -20,52 +20,38 @@ Rook::Rook(int _x, int _y, bool _isWhite)
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> Rook::GetPossibleMoves(Tile tiles[8][8])
+vector<Tile*> Rook::GetPossibleMoves(Tile tiles[8][8])
 {
-	vector<Tile> possibleMoves;
-	// Check horizontal and vertical directions
-	for (int dx = -1; dx <= 1; dx += 2) // Horizontal movement
+	vector<Tile*> possibleMoves;
+	// Directions: up, down, left, right
+	const int directions[4][2] = {
+		{0, 1},   // Up
+		{0, -1},  // Down
+		{-1, 0},  // Left
+		{1, 0}    // Right
+	};
+	for (const auto& dir : directions)
 	{
-		int newX = X + dx;
-		while (newX >= 0 && newX < 8)
+		int dx = dir[0];
+		int dy = dir[1];
+		int nx = X + dx;
+		int ny = Y + dy;
+		while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8) // Stay within board bounds
 		{
-			if (!tiles[newX][Y].HasFigure())
+			if (!tiles[nx][ny].IsOccupied())
 			{
-				possibleMoves.push_back(tiles[newX][Y]);
+				possibleMoves.push_back(&tiles[nx][ny]); // Empty tile
 			}
 			else
 			{
-				// If there's a figure, we can capture it if it's of the opposite color
-				if ((IsWhite && !tiles[newX][Y].HasFigure()) || (!IsWhite && tiles[newX][Y].HasFigure()))
+				if (tiles[nx][ny].GetFigure()->GetColor() != IsWhite)
 				{
-					possibleMoves.push_back(tiles[newX][Y]);
+					possibleMoves.push_back(&tiles[nx][ny]); // Capture opponent's piece
 				}
-				break; // Stop checking this direction after encountering a figure
+				break; // Stop in this direction after hitting any piece
 			}
-			newX += dx;
-		}
-	}
-
-	// Vertical movement
-	for (int dy = -1; dy <= 1; dy += 2) 
-	{
-		int newY = Y + dy;
-		while (newY >= 0 && newY < 8)
-		{
-			if (!tiles[X][newY].HasFigure())
-			{
-				possibleMoves.push_back(tiles[X][newY]);
-			}
-			else
-			{
-				// If there's a figure, we can capture it if it's of the opposite color
-				if ((IsWhite && !tiles[X][newY].HasFigure()) || (!IsWhite && tiles[X][newY].HasFigure()))
-				{
-					possibleMoves.push_back(tiles[X][newY]);
-				}
-				break; // Stop checking this direction after encountering a figure
-			}
-			newY += dy;
+			nx += dx;
+			ny += dy;
 		}
 	}
 	return possibleMoves;

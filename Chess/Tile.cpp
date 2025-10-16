@@ -1,34 +1,28 @@
 #include "Tile.h"
+#include "Figurines/Figure.h"
 
-Tile::Tile(int x, int y, bool hasFigure) 
+Tile::Tile(int x, int y, bool isOccupied)
+	: _x(x), _y(y), _occupant(nullptr) 
+{}
+
+bool Tile::IsOccupied() const { return _occupant != nullptr; }
+
+int Tile::GetX() const { return _x; }
+int Tile::GetY() const { return _y; }
+
+void Tile::SetPosition(int x, int y)
 {
 	_x = x;
 	_y = y;
-	_hasFigure = hasFigure;
 }
 
-bool Tile::HasFigure() 
+void Tile::SetFigure(Figure* figure)
 {
-	return _hasFigure;
+	_occupant = figure;
+	//_isOccupied = (figure != nullptr);
 }
 
-void Tile::SetFigure(bool hasFigure)
+Figure* Tile::GetFigure() const
 {
-	_hasFigure = hasFigure;
-}
-
-int Tile::GetX() const 
-{
-	return _x;
-}
-
-int Tile::GetY() const 
-{
-	return _y;
-}
-
-void Tile::SetPosition(int x, int y) 
-{
-	_x = x;
-	_y = y;
+	return _occupant;
 }

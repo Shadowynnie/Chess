@@ -20,35 +20,36 @@ Queen::Queen(int _x, int _y, bool _isWhite)
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
-vector<Tile> Queen::GetPossibleMoves(Tile tiles[8][8])
+vector<Tile*> Queen::GetPossibleMoves(Tile tiles[8][8])
 {
-	vector<Tile> possibleMoves;
-	// Check all directions: horizontal, vertical, and diagonal
-	for (int dx = -1; dx <= 1; dx++)
+	vector<Tile*> possibleMoves;
+	// Directions: N, NE, E, SE, S, SW, W, NW
+	int directions[8][2] = {
+		{0, -1}, {1, -1}, {1, 0}, {1, 1},
+		{0, 1}, {-1, 1}, {-1, 0}, {-1, -1}
+	};
+	for (auto& dir : directions)
 	{
-		for (int dy = -1; dy <= 1; dy++)
+		int dx = dir[0];
+		int dy = dir[1];
+		int nx = X + dx;
+		int ny = Y + dy;
+		while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
 		{
-			if (dx == 0 && dy == 0) continue; // Skip the case where both dx and dy are zero
-			int newX = X + dx;
-			int newY = Y + dy;
-			while (newX >= 0 && newX < 8 && newY >= 0 && newY < 8)
+			if (!tiles[nx][ny].IsOccupied())
 			{
-				if (!tiles[newX][newY].HasFigure())
-				{
-					possibleMoves.push_back(tiles[newX][newY]);
-				}
-				else
-				{
-					// If there's a figure, we can capture it if it's of the opposite color
-					if ((IsWhite && !tiles[newX][newY].HasFigure()) || (!IsWhite && tiles[newX][newY].HasFigure())) 
-					{
-						possibleMoves.push_back(tiles[newX][newY]);
-					}
-					break; // Stop checking this direction after encountering a figure
-				}
-				newX += dx;
-				newY += dy;
+				possibleMoves.push_back(&tiles[nx][ny]);
 			}
+			else
+			{
+				if (tiles[nx][ny].GetFigure()->GetColor() != IsWhite)
+				{
+					possibleMoves.push_back(&tiles[nx][ny]); // Can capture opponent's piece
+				}
+				break; // Can't move past occupied tile
+			}
+			nx += dx;
+			ny += dy;
 		}
 	}
 	return possibleMoves;

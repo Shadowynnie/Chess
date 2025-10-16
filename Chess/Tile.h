@@ -1,18 +1,20 @@
 #pragma once
 
+class Figure; // Forward declaration — avoids circular dependency
 
 class Tile
 {
-	
 	int _x;
 	int _y;
-	bool _hasFigure; // To check if there is a chess piece on the tile
+	//bool _isOccupied = false;
+	Figure* _occupant = nullptr; // Pointer to the figure occupying the tile
 public:
-	Tile(int x, int y, bool hasFigure = false);
+	Tile(int x, int y, bool isOccupied);
 	Tile() = default;
-	bool HasFigure();
-	void SetFigure(bool hasFigure);
+	bool IsOccupied() const;
 	int GetX() const;
 	int GetY() const;
 	void SetPosition(int x, int y);
+	void SetFigure(Figure* figure); // Set figure pointer
+	Figure* GetFigure() const;      // Getter for occupant
 };

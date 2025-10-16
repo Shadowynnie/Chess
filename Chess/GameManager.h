@@ -21,20 +21,40 @@ using std::cerr;
 using std::endl;
 using std::cout;
 
-static bool CurrentRound = true; // True for player 1's turn, false for player 2's turn
+enum class GameState
+{
+	MAIN_MENU,
+	HOST_GAME,
+	CONNECT_TO_GAME,
+	SINGLEPLAYER,
+	GAME_OVER,
+	CLOSED
+};
+
+enum class PieceType
+{
+	ROOK,
+	KNIGHT,
+	BISHOP,
+	QUEEN,
+	KING,
+	PAWN
+};
 
 class GameManager
 {
-	Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
-	vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces
-	vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces
 public:
-	GameManager(); // Constructor to initialize the game manager
-	~GameManager(); // Destructor to clean up dynamically allocated memory
-	void InitializeBoard(); // Function to initialize the chessboard with tiles and figures
-	void Draw(sf::RenderWindow& window, GameState gameState); // Function to draw the chessboard and figures on the window
-	void HandleInput(sf::Event event); // Function to handle user input events
-	void Update(); // Function to update the game state
-    void MainMenu(); // Function to display the main menu
-	void ResetGame(); // Function to reset the game state
+	//GameManager(); // Constructor to initialize the game manager
+	//~GameManager(); // Destructor to clean up dynamically allocated memory
+	static void InitializeBoard(); // Function to initialize the chessboard with tiles and figures
+    static void DeinitializeBoard(); // Function to clean up the board and figures
+	static void DrawGame(sf::RectangleShape tileShape); // Function to draw the chessboard and figures on the window
+	static void Update(); // Function to update the game state
+	static void MainMenu(); // Function to display the main menu
+    static void HostGame(); // Function to host a game
+    static void ConnectToGame(); // Function to connect to a game
+    static void PlayGame(); // Singleplayer or multiplayer game loop
+    static void ShowPossibleMoves(Figure* figure); // Function to highlight possible moves for a selected figure
+    static void HandleMenuEvents(); // Function to handle menu events
+    static void HandleGameEvents(); // Function to handle game events
 };
