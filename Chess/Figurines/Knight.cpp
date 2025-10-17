@@ -43,7 +43,5 @@ vector<Tile*> Knight::GetPossibleMoves(Tile tiles[8][8])
 			}
 		}
 	}
-	// Highlight the tiles
-	HighlightPossibleMoves(possibleMoves);
 	return possibleMoves;
 }

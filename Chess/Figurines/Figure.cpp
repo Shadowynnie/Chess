@@ -18,9 +18,14 @@ void Figure::Move(Tile* tile) // Move the figure to the specified tile position
 {
 	if (tile != nullptr)
 	{
+		if (tile->IsOccupied())
+		{
+			tile->GetFigure()->~Figure();
+		}
         X = tile->GetX();
         Y = tile->GetY();
 		Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
+        tile->SetFigure(this);
 	}
 }
 

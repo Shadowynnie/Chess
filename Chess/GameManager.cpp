@@ -101,7 +101,6 @@ void GameManager::DrawGame()
 			_tiles[i][j].TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
             _tiles[i][j].TileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
 
-			//sf::CircleShape highlight(20.f);
 			if (_tiles[i][j].IsHighlighted())
 			{
 				_tiles[i][j].HighLight.setFillColor(sf::Color(255, 0, 0, 128)); // Semi-transparent red
@@ -119,14 +118,28 @@ void GameManager::DrawGame()
 		for (auto figure : figures)
 			_window.draw(figure->GetSprite());
 	}
+
+}
+
+void ClearHighlitghts()
+{
+	for (size_t i = 0; i < 8; i++)
+	{
+		for (size_t j = 0; j < 8; j++)
+		{
+			_tiles[i][j].Highlight(false);
+		}
+	}
 }
 
 void GameManager::Update() 
 {
-    // Tile shape for drawing the board
-	//sf::RectangleShape tileShape(sf::Vector2f(128, 128));
 	std::optional<sf::Event> event;
 	sf::Vector2i mousePos;
+	Tile* selectedTile = &_tiles[0][0];
+    Tile* previousSelectedTile = &_tiles[0][0];
+	Figure* selectedFigure = nullptr;
+    Figure* previousSelectedFigure = nullptr;
 
     // GAME LOOP
 	while (_window.isOpen())
@@ -149,33 +162,34 @@ void GameManager::Update()
 			if (event->is<sf::Event::MouseButtonPressed>() &&
 				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
-                // Clear previous highlights
-				for (size_t i = 0; i < 8; i++)
-				{
-					for (size_t j = 0; j < 8; j++)
-					{
-                        _tiles[i][j].Highlight(false);
-					}
-				}
 				mousePos = sf::Mouse::getPosition(_window);
                 int tileX = mousePos.x / 128;
                 int tileY = mousePos.y / 128;
+                //cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << endl;
 				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
 				{
-					Tile& selectedTile = _tiles[tileX][tileY];
-					Figure* selectedFigure;
-					if (selectedTile.IsOccupied())
+					selectedTile = &_tiles[tileX][tileY];
+                    cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << endl;
+
+					if (selectedTile->IsOccupied())
 					{
-						selectedFigure = selectedTile.GetFigure();
-						//cout << "Selected " << (fig->GetColor()? "White " : "Black ") << typeid(*fig).name() << endl;
+						// Clear previous highlights
+                        ClearHighlitghts();
+						selectedFigure = selectedTile->GetFigure();
+						//cout << "Fig pos: X: " << selectedFigure->GetX() << " Y: " << selectedFigure->GetY() << endl;
 						
                         if (selectedFigure->GetColor() == _currentRound) // if the figure color matches the current player's turn
 						{
-							cout << "Player with white figs clicked on a: " << typeid(*selectedFigure).name()
-								<< " at the position X: " << selectedFigure->GetX() << " Y: " << selectedFigure->GetY() << endl;
-
-                            vector<Tile*> possibleMoves = selectedFigure->GetPossibleMoves(_tiles);
+							//cout << "Player with white figs clicked on a: " << typeid(*selectedFigure).name()
+							//	<< " at the position X: " << selectedFigure->GetX() << " Y: " << selectedFigure->GetY() << endl;
+							//cout << "Selected " << (selectedFigure->GetColor() ? "White " : "Black ") << typeid(*selectedFigure).name() << endl;
+                            
+                            // Show possible moves
+							vector<Tile*> possibleMoves = selectedFigure->GetPossibleMoves(_tiles);
+                            selectedFigure->HighlightPossibleMoves(possibleMoves);
                             // Wait for the player to select a valid move
+							previousSelectedTile = selectedTile;
+                            previousSelectedFigure = selectedFigure;
 
 						}
 						else
@@ -183,11 +197,15 @@ void GameManager::Update()
                             cout << "It's not your turn!" << endl;
 						}
 					}
-					else
+					else if (selectedTile->IsHighlighted())
 					{
-						cout<< "Clicked on an empty tile at position X: " << selectedTile.GetX()
-                            << " Y: " << selectedTile.GetY() << endl;
+                        selectedFigure->Move(selectedTile);
+                        // Clear highlights after move
+                        ClearHighlitghts();
+                        previousSelectedTile->SetFigure(nullptr); // Remove figure from previous tile
+                        _currentRound = !_currentRound; // Switch turns
 					}
+
                 }
 			}
 		}

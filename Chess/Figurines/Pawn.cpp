@@ -48,7 +48,5 @@ vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
 	{
 		possibleMoves.push_back(&tiles[X + 1][Y + direction]);
 	}
-	// Highlight the tiles
-    HighlightPossibleMoves(possibleMoves);
 	return possibleMoves;
 }
