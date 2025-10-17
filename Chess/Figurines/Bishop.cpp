@@ -41,5 +41,7 @@ vector<Tile*> Bishop::GetPossibleMoves(Tile tiles[8][8])
 			y += dy;
 		}
 	}
+	// Highlight the tiles
+    HighlightPossibleMoves(possibleMoves);
 	return possibleMoves;
 }

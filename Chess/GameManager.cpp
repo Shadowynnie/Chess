@@ -91,16 +91,26 @@ void GameManager::DeinitializeBoard()
     _playerTwoFigures.clear();
 }
 
-void GameManager::DrawGame(sf::RectangleShape tileShape)
+void GameManager::DrawGame()
 {
 	// Draw tiles
 	for (int i = 0; i < 8; ++i)
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			tileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
-			tileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
-			_window.draw(tileShape);
+			_tiles[i][j].TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
+            _tiles[i][j].TileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
+
+			//sf::CircleShape highlight(20.f);
+			if (_tiles[i][j].IsHighlighted())
+			{
+				_tiles[i][j].HighLight.setFillColor(sf::Color(255, 0, 0, 128)); // Semi-transparent red
+				_tiles[i][j].HighLight.setPosition(sf::Vector2f(_tiles[i][j].GetX() * 128 + 44, _tiles[i][j].GetY() * 128 + 44));
+				_window.draw(_tiles[i][j].TileShape);
+				_window.draw(_tiles[i][j].HighLight);
+			}
+			else
+				_window.draw(_tiles[i][j].TileShape);
 		}
 	}
 	// Draw figures
@@ -114,7 +124,7 @@ void GameManager::DrawGame(sf::RectangleShape tileShape)
 void GameManager::Update() 
 {
     // Tile shape for drawing the board
-	sf::RectangleShape tileShape(sf::Vector2f(128, 128));
+	//sf::RectangleShape tileShape(sf::Vector2f(128, 128));
 	std::optional<sf::Event> event;
 	sf::Vector2i mousePos;
 
@@ -122,7 +132,7 @@ void GameManager::Update()
 	while (_window.isOpen())
 	{
 		_window.clear();        
-        DrawGame(tileShape);
+        DrawGame();
         // Handle input events
 		while (event = _window.pollEvent())
 		{
@@ -139,26 +149,44 @@ void GameManager::Update()
 			if (event->is<sf::Event::MouseButtonPressed>() &&
 				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
+                // Clear previous highlights
+				for (size_t i = 0; i < 8; i++)
+				{
+					for (size_t j = 0; j < 8; j++)
+					{
+                        _tiles[i][j].Highlight(false);
+					}
+				}
 				mousePos = sf::Mouse::getPosition(_window);
                 int tileX = mousePos.x / 128;
                 int tileY = mousePos.y / 128;
 				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
 				{
 					Tile& selectedTile = _tiles[tileX][tileY];
+					Figure* selectedFigure;
 					if (selectedTile.IsOccupied())
 					{
-						Figure* fig = selectedTile.GetFigure();
+						selectedFigure = selectedTile.GetFigure();
 						//cout << "Selected " << (fig->GetColor()? "White " : "Black ") << typeid(*fig).name() << endl;
 						
-                        if (fig->GetColor() == _currentRound) // if the figure color matches the current player's turn
+                        if (selectedFigure->GetColor() == _currentRound) // if the figure color matches the current player's turn
 						{
-							cout << "Player with white figs clicked on a: " << typeid(*fig).name() << endl;
-                            ShowPossibleMoves(fig);
+							cout << "Player with white figs clicked on a: " << typeid(*selectedFigure).name()
+								<< " at the position X: " << selectedFigure->GetX() << " Y: " << selectedFigure->GetY() << endl;
+
+                            vector<Tile*> possibleMoves = selectedFigure->GetPossibleMoves(_tiles);
+                            // Wait for the player to select a valid move
+
 						}
 						else
 						{
                             cout << "It's not your turn!" << endl;
 						}
+					}
+					else
+					{
+						cout<< "Clicked on an empty tile at position X: " << selectedTile.GetX()
+                            << " Y: " << selectedTile.GetY() << endl;
 					}
                 }
 			}
@@ -166,19 +194,6 @@ void GameManager::Update()
 		_window.display();
 	}
 }
-
-void GameManager::ShowPossibleMoves(Figure* figure)
-{
-	vector<Tile*> possibleMoves = figure->GetPossibleMoves(_tiles);
-	sf::CircleShape highlight(20.f);
-	highlight.setFillColor(sf::Color(255, 0, 0, 128)); // Semi-transparent red
-	for (Tile* tile : possibleMoves)
-	{
-		highlight.setPosition(sf::Vector2f(tile->GetX() * 128 + 44, tile->GetY() * 128 + 44)); // Center the circle in the tile
-		_window.draw(highlight);
-	}
-}
-
 
 void GameManager::MainMenu()
 {

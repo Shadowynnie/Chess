@@ -48,13 +48,13 @@ public:
 	//~GameManager(); // Destructor to clean up dynamically allocated memory
 	static void InitializeBoard(); // Function to initialize the chessboard with tiles and figures
     static void DeinitializeBoard(); // Function to clean up the board and figures
-	static void DrawGame(sf::RectangleShape tileShape); // Function to draw the chessboard and figures on the window
+	static void DrawGame(); // Function to draw the chessboard and figures on the window
 	static void Update(); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
     static void HostGame(); // Function to host a game
     static void ConnectToGame(); // Function to connect to a game
     static void PlayGame(); // Singleplayer or multiplayer game loop
-    static void ShowPossibleMoves(Figure* figure); // Function to highlight possible moves for a selected figure
+    //static void ShowPossibleMoves(Figure* figure); // Function to highlight possible moves for a selected figure
     static void HandleMenuEvents(); // Function to handle menu events
     static void HandleGameEvents(); // Function to handle game events
 };

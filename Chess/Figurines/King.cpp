@@ -43,5 +43,7 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 			}
 		}
 	}
+	// Highlight the tiles
+    HighlightPossibleMoves(possibleMoves);
 	return possibleMoves;
 }

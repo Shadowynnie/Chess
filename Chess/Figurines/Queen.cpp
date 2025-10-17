@@ -52,5 +52,7 @@ vector<Tile*> Queen::GetPossibleMoves(Tile tiles[8][8])
 			ny += dy;
 		}
 	}
+	// Highlight the tiles
+	HighlightPossibleMoves(possibleMoves);
 	return possibleMoves;
 }

@@ -24,10 +24,14 @@ public:
 
 	void Move(Tile* tile);
 	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8]) = 0;
+    void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
 	virtual sf::Sprite GetSprite() const;
 
 	int GetX() const;
 	int GetY() const;
 	bool GetColor() const;
-	
+
+
+	//Testing functions
+    void setPosition(int x, int y) { X = x; Y = y; }
 };
