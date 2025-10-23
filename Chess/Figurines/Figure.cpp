@@ -20,7 +20,7 @@ void Figure::Move(Tile* tile) // Move the figure to the specified tile position
 	{
 		if (tile->IsOccupied())
 		{
-			tile->GetFigure()->~Figure();
+			delete tile->GetFigure();
 		}
         X = tile->GetX();
         Y = tile->GetY();

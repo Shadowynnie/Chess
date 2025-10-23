@@ -6,15 +6,6 @@ Pawn::Pawn(int _x, int _y, bool _isWhite)
 	Y = _y;
 	IsWhite = _isWhite;
 
-	/*
-	if (isWhite)
-	{
-		sprite = assetManager.pawnSpriteWhite; // Use the asset manager to get the white bishop sprite
-	}
-	else
-	{
-		sprite = assetManager.pawnSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}*/
 	string key = IsWhite ? "pawn_white" : "pawn_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));

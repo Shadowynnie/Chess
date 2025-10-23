@@ -6,8 +6,8 @@
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
 static Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
-static vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces
-static vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces
+static vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces (WHITE)
+static vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces (BLACK)
 sf::RenderWindow _window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
 
 // Replaces switch-case or if-else chains for state management
@@ -113,12 +113,33 @@ void GameManager::DrawGame()
 		}
 	}
 	// Draw figures
-	for (auto& figures : { _playerOneFigures, _playerTwoFigures })
+	//_playerOneFigures.erase(std::remove(_playerOneFigures.begin(), _playerOneFigures.end(), nullptr), _playerOneFigures.end());
+	//_playerTwoFigures.erase(std::remove(_playerTwoFigures.begin(), _playerTwoFigures.end(), nullptr), _playerTwoFigures.end());
+	//for (auto& figures : { _playerOneFigures, _playerTwoFigures })
+	//{
+	//	for (auto figure : figures)
+	//	{
+	//		figures.
+	//		if (figure != nullptr)
+	//		{
+	//			_window.draw(figure->GetSprite());
+	//		}
+	//	}
+	//} // TODO: Solve the exception when the figure is eated.
+	for (auto& figure : _playerOneFigures)
 	{
-		for (auto figure : figures)
+		if (figure != nullptr)
 			_window.draw(figure->GetSprite());
+		else
+			_playerOneFigures.erase(std::remove(_playerOneFigures.begin(), _playerOneFigures.end(), figure), _playerOneFigures.end());
+    }
+	for (auto& figure : _playerTwoFigures)
+	{
+		if (figure != nullptr)
+			_window.draw(figure->GetSprite());
+		else
+			_playerTwoFigures.erase(std::remove(_playerTwoFigures.begin(), _playerTwoFigures.end(), figure), _playerTwoFigures.end());
 	}
-
 }
 
 void ClearHighlitghts()
@@ -136,8 +157,8 @@ void GameManager::Update()
 {
 	std::optional<sf::Event> event;
 	sf::Vector2i mousePos;
-	Tile* selectedTile = &_tiles[0][0];
-    Tile* previousSelectedTile = &_tiles[0][0];
+	Tile* selectedTile = nullptr;
+    Tile* previousSelectedTile = nullptr;
 	Figure* selectedFigure = nullptr;
     Figure* previousSelectedFigure = nullptr;
 
@@ -170,42 +191,27 @@ void GameManager::Update()
 				{
 					selectedTile = &_tiles[tileX][tileY];
                     cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << endl;
-
-					if (selectedTile->IsOccupied())
+					cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes" : " No") << endl;
+					cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes" : " No") << endl;
+					if (previousSelectedTile != nullptr)
 					{
-						// Clear previous highlights
-                        ClearHighlitghts();
-						selectedFigure = selectedTile->GetFigure();
-						//cout << "Fig pos: X: " << selectedFigure->GetX() << " Y: " << selectedFigure->GetY() << endl;
-						
-                        if (selectedFigure->GetColor() == _currentRound) // if the figure color matches the current player's turn
+						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
 						{
-							//cout << "Player with white figs clicked on a: " << typeid(*selectedFigure).name()
-							//	<< " at the position X: " << selectedFigure->GetX() << " Y: " << selectedFigure->GetY() << endl;
-							//cout << "Selected " << (selectedFigure->GetColor() ? "White " : "Black ") << typeid(*selectedFigure).name() << endl;
-                            
-                            // Show possible moves
-							vector<Tile*> possibleMoves = selectedFigure->GetPossibleMoves(_tiles);
-                            selectedFigure->HighlightPossibleMoves(possibleMoves);
-                            // Wait for the player to select a valid move
-							previousSelectedTile = selectedTile;
-                            previousSelectedFigure = selectedFigure;
-
-						}
-						else
-						{
-                            cout << "It's not your turn!" << endl;
+							previousSelectedTile->GetFigure()->Move(selectedTile);
+							ClearHighlitghts();
+							// Switch turns
+							_currentRound = !_currentRound;
+							previousSelectedTile->SetFigure(nullptr);
+							previousSelectedTile = nullptr;
 						}
 					}
-					else if (selectedTile->IsHighlighted())
+					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
-                        selectedFigure->Move(selectedTile);
-                        // Clear highlights after move
+                        vector<Tile*> possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
                         ClearHighlitghts();
-                        previousSelectedTile->SetFigure(nullptr); // Remove figure from previous tile
-                        _currentRound = !_currentRound; // Switch turns
+                        selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
+						previousSelectedTile = selectedTile;
 					}
-
                 }
 			}
 		}
