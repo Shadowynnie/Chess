@@ -113,33 +113,16 @@ void GameManager::DrawGame()
 		}
 	}
 	// Draw figures
-	//_playerOneFigures.erase(std::remove(_playerOneFigures.begin(), _playerOneFigures.end(), nullptr), _playerOneFigures.end());
-	//_playerTwoFigures.erase(std::remove(_playerTwoFigures.begin(), _playerTwoFigures.end(), nullptr), _playerTwoFigures.end());
-	//for (auto& figures : { _playerOneFigures, _playerTwoFigures })
-	//{
-	//	for (auto figure : figures)
-	//	{
-	//		figures.
-	//		if (figure != nullptr)
-	//		{
-	//			_window.draw(figure->GetSprite());
-	//		}
-	//	}
-	//} // TODO: Solve the exception when the figure is eated.
-	for (auto& figure : _playerOneFigures)
+	auto drawFigures = [&](const std::vector<Figure*>& figures)
 	{
-		if (figure != nullptr)
-			_window.draw(figure->GetSprite());
-		else
-			_playerOneFigures.erase(std::remove(_playerOneFigures.begin(), _playerOneFigures.end(), figure), _playerOneFigures.end());
-    }
-	for (auto& figure : _playerTwoFigures)
-	{
-		if (figure != nullptr)
-			_window.draw(figure->GetSprite());
-		else
-			_playerTwoFigures.erase(std::remove(_playerTwoFigures.begin(), _playerTwoFigures.end(), figure), _playerTwoFigures.end());
-	}
+		for (auto figure : figures)
+		{
+			if (figure)
+				_window.draw(figure->GetSprite());
+		}
+	};
+	drawFigures(_playerOneFigures);
+	drawFigures(_playerTwoFigures);
 }
 
 void ClearHighlitghts()
@@ -190,21 +173,36 @@ void GameManager::Update()
 				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
 				{
 					selectedTile = &_tiles[tileX][tileY];
+
+                    // Debug information
+                    cout << "-------------------------" << endl;
+                    cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << endl;
                     cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << endl;
 					cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes" : " No") << endl;
 					cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes" : " No") << endl;
+                    cout << "Current round (true=white, false=black): " << (_currentRound ? "White" : "Black") << endl;
+                    cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes" : " No") << endl;
+
+                    // When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
 					{
 						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
 						{
-							previousSelectedTile->GetFigure()->Move(selectedTile);
+							if (selectedTile->IsOccupied())
+							{
+								if (selectedTile->GetFigure()->GetColor() != _currentRound)
+									previousSelectedTile->GetFigure()->Move(selectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
+							}
+							else
+								previousSelectedTile->GetFigure()->Move(selectedTile);
+
 							ClearHighlitghts();
 							// Switch turns
 							_currentRound = !_currentRound;
 							previousSelectedTile->SetFigure(nullptr);
 							previousSelectedTile = nullptr;
 						}
-					}
+                    } // When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
                         vector<Tile*> possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);

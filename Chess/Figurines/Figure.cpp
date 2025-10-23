@@ -18,14 +18,31 @@ void Figure::Move(Tile* tile) // Move the figure to the specified tile position
 {
 	if (tile != nullptr)
 	{
-		if (tile->IsOccupied())
-		{
-			delete tile->GetFigure();
-		}
         X = tile->GetX();
         Y = tile->GetY();
 		Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
         tile->SetFigure(this);
+	}
+}
+
+void Figure::Move(Tile* tile, std::vector<Figure*>& enemyFigures)
+{
+	if (tile != nullptr)
+	{
+		if (tile->IsOccupied())
+		{
+			Figure* capturedFigure = tile->GetFigure();
+			auto it = std::find(enemyFigures.begin(), enemyFigures.end(), capturedFigure);
+			if (it != enemyFigures.end())
+			{
+				enemyFigures.erase(it);
+				delete capturedFigure;
+			}
+		}
+		X = tile->GetX();
+		Y = tile->GetY();
+		Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
+		tile->SetFigure(this);
 	}
 }
 

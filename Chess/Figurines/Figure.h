@@ -23,6 +23,7 @@ public:
 	virtual ~Figure() = default;
 
 	void Move(Tile* tile);
+	void Move(Tile* tile, std::vector<Figure*>& enemyFigures);
 	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8]) = 0;
     void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
 	virtual sf::Sprite GetSprite() const;
