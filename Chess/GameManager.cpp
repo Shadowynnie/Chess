@@ -99,31 +99,44 @@ void GameManager::DrawGame()
 		for (int j = 0; j < 8; ++j)
 		{
 			_tiles[i][j].TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
-            _tiles[i][j].TileShape.setFillColor((i + j) % 2 == 0 ? sf::Color(118, 150, 86) : sf::Color(238, 238, 210));
+			_tiles[i][j].TileShape.setFillColor((i + j) % 2 == 0
+				? sf::Color(118, 150, 86)
+				: sf::Color(238, 238, 210));
 
-			if (_tiles[i][j].IsHighlighted())
-			{
-				_tiles[i][j].HighLight.setFillColor(sf::Color(255, 0, 0, 128)); // Semi-transparent red
-				_tiles[i][j].HighLight.setPosition(sf::Vector2f(_tiles[i][j].GetX() * 128 + 44, _tiles[i][j].GetY() * 128 + 44));
-				_window.draw(_tiles[i][j].TileShape);
-				_window.draw(_tiles[i][j].HighLight);
-			}
-			else
-				_window.draw(_tiles[i][j].TileShape);
+			_window.draw(_tiles[i][j].TileShape);
 		}
 	}
-	// Draw figures
+
+    // Draw figures
 	auto drawFigures = [&](const std::vector<Figure*>& figures)
-	{
-		for (auto figure : figures)
 		{
-			if (figure)
-				_window.draw(figure->GetSprite());
-		}
-	};
+			for (auto figure : figures)
+			{
+				if (figure)
+					_window.draw(figure->GetSprite());
+			}
+		};
 	drawFigures(_playerOneFigures);
 	drawFigures(_playerTwoFigures);
+
+    // Draw highlights
+	for (int i = 0; i < 8; ++i)
+	{
+		for (int j = 0; j < 8; ++j)
+		{
+			if (_tiles[i][j].IsHighlighted())
+			{
+				_tiles[i][j].HighLight.setFillColor(sf::Color(255, 0, 0, 128));
+				_tiles[i][j].HighLight.setPosition(sf::Vector2f(
+					_tiles[i][j].GetX() * 128 + 44,
+					_tiles[i][j].GetY() * 128 + 44
+				));
+				_window.draw(_tiles[i][j].HighLight);
+			}
+		}
+	}
 }
+
 
 void ClearHighlitghts()
 {
