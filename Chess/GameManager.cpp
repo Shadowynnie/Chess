@@ -33,7 +33,7 @@ void GameManager::InitializeBoard()
 		}
 	}
 
-	// Factory map for all piece types, this can replace switch-case or if-else chains
+	// Factory map for all piece types
 	map<PieceType, function<Figure* (int, int, bool)>> factories = {
 		{ PieceType::ROOK,   [](int x,int y,bool w) { return new Rook(x,y,w); } },
 		{ PieceType::KNIGHT, [](int x,int y,bool w) { return new Knight(x,y,w); } },
