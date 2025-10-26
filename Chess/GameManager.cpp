@@ -91,50 +91,73 @@ void GameManager::DeinitializeBoard()
     _playerTwoFigures.clear();
 }
 
-void GameManager::DrawGame()
+// Drawing function definitions
+// Draw the chessboard tiles
+void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 {
-	// Draw tiles
 	for (int i = 0; i < 8; ++i)
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			_tiles[i][j].TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
-			_tiles[i][j].TileShape.setFillColor((i + j) % 2 == 0
+			Tile& t = tiles[i][j];
+			t.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
+			t.TileShape.setFillColor((i + j) % 2 == 0
 				? sf::Color(118, 150, 86)
 				: sf::Color(238, 238, 210));
 
-			_window.draw(_tiles[i][j].TileShape);
+			window.draw(t.TileShape);
 		}
 	}
+}
 
-    // Draw figures
-	auto drawFigures = [&](const std::vector<Figure*>& figures)
+// Draw the chess pieces for both players
+void GameManager::DrawFigures(sf::RenderWindow& window,
+	const std::vector<Figure*>& white,
+	const std::vector<Figure*>& black)
+{
+	auto drawSide = [&](const std::vector<Figure*>& figures)
 		{
 			for (auto figure : figures)
 			{
 				if (figure)
-					_window.draw(figure->GetSprite());
+					window.draw(figure->GetSprite());
 			}
 		};
-	drawFigures(_playerOneFigures);
-	drawFigures(_playerTwoFigures);
+	drawSide(white);
+	drawSide(black);
+}
 
-    // Draw highlights
+// Draw highlighted tiles
+void GameManager::DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8])
+{
 	for (int i = 0; i < 8; ++i)
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			if (_tiles[i][j].IsHighlighted())
+			Tile& t = tiles[i][j];
+			if (t.IsHighlighted())
 			{
-				_tiles[i][j].HighLight.setFillColor(sf::Color(255, 0, 0, 128));
-				_tiles[i][j].HighLight.setPosition(sf::Vector2f(
-					_tiles[i][j].GetX() * 128 + 44,
-					_tiles[i][j].GetY() * 128 + 44
+				t.HighLight.setFillColor(sf::Color(255, 0, 0, 128));
+				t.HighLight.setPosition(sf::Vector2f(
+					float(t.GetX() * 128 + 44),
+					float(t.GetY() * 128 + 44)
 				));
-				_window.draw(_tiles[i][j].HighLight);
+				window.draw(t.HighLight);
 			}
 		}
 	}
+}
+
+void GameManager::DrawGame()
+{
+	// Tiles
+	DrawTiles(_window, _tiles);
+
+	// Figures
+	DrawFigures(_window, _playerOneFigures, _playerTwoFigures);
+
+	// Highlights
+	DrawHighlights(_window, _tiles);
 }
 
 

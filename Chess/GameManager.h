@@ -48,7 +48,13 @@ public:
 	//~GameManager(); // Destructor to clean up dynamically allocated memory
 	static void InitializeBoard(); // Function to initialize the chessboard with tiles and figures
     static void DeinitializeBoard(); // Function to clean up the board and figures
+
+    // Drawing functions
 	static void DrawGame(); // Function to draw the chessboard and figures on the window
+	static void DrawTiles(sf::RenderWindow& window, Tile tiles[8][8]);
+	static void DrawFigures(sf::RenderWindow& window, const std::vector<Figure*>& white, const std::vector<Figure*>& black);
+	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
+
 	static void Update(); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
     static void HostGame(); // Function to host a game
