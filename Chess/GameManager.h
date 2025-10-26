@@ -54,6 +54,8 @@ public:
 	static void DrawTiles(sf::RenderWindow& window, Tile tiles[8][8]);
 	static void DrawFigures(sf::RenderWindow& window, const std::vector<Figure*>& white, const std::vector<Figure*>& black);
 	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
+	static void ClearHighlitghts();
+    static void CheckForCheck(); // Function to check if a king is in check
 
 	static void Update(); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
