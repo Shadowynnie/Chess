@@ -7,6 +7,7 @@ Tile::Tile(int x, int y, bool isOccupied)
 
 bool Tile::IsOccupied() const { return _occupant != nullptr; }
 bool Tile::IsHighlighted() const { return _isHighlighted; }
+bool Tile::IsInCheck() const { return _isInCheck; }
 int Tile::GetX() const { return _x; }
 int Tile::GetY() const { return _y; }
 
@@ -25,6 +26,11 @@ void Tile::SetFigure(Figure* figure)
 void Tile::Highlight(bool isHighlighted)
 {
     _isHighlighted = isHighlighted;
+}
+
+void Tile::SetInCheck(bool isInCheck)
+{
+	_isInCheck = isInCheck;
 }
 
 Figure* Tile::GetFigure() const

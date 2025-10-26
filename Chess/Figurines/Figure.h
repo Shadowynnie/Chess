@@ -31,7 +31,7 @@ public:
 	int GetX() const;
 	int GetY() const;
 	bool GetColor() const;
-
+    Tile* GetCurrentTile(Tile tiles[8][8]) const;
 
 	//Testing functions
     void setPosition(int x, int y) { X = x; Y = y; }

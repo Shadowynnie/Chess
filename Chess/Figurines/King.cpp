@@ -45,3 +45,19 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 	}
 	return possibleMoves;
 }
+
+bool King::IsThreatened(Tile tiles[8][8], std::vector<Figure*>& enemyFigures)
+{
+	for (auto& enemy : enemyFigures)
+	{
+		vector<Tile*> enemyMoves = enemy->GetPossibleMoves(tiles);
+		for (auto& tile : enemyMoves)
+		{
+			if (tile->GetX() == X && tile->GetY() == Y)
+			{
+				return true; // King is threatened
+			}
+		}
+	}
+	return false; // King is safe
+}

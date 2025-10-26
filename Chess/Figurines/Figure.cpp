@@ -68,3 +68,8 @@ bool Figure::GetColor() const
 {
 	return IsWhite;
 }
+
+Tile* Figure::GetCurrentTile(Tile tiles[8][8]) const
+{
+	return &tiles[X][Y];
+}

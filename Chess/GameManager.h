@@ -61,6 +61,6 @@ public:
     static void ConnectToGame(); // Function to connect to a game
     static void PlayGame(); // Singleplayer or multiplayer game loop
     //static void ShowPossibleMoves(Figure* figure); // Function to highlight possible moves for a selected figure
-    static void HandleMenuEvents(); // Function to handle menu events
-    static void HandleGameEvents(); // Function to handle game events
+    //static void HandleMenuEvents(); // Function to handle menu events
+    //static void HandleGameEvents(); // Function to handle game events
 };

@@ -100,15 +100,20 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 		for (int j = 0; j < 8; ++j)
 		{
 			Tile& t = tiles[i][j];
-			t.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
-			t.TileShape.setFillColor((i + j) % 2 == 0
-				? sf::Color(118, 150, 86)
-				: sf::Color(238, 238, 210));
 
+			// pokud barva není èervená (král v šachu), pøebarvi na základní barvu
+			if (!t.IsInCheck())
+			{
+				t.TileShape.setFillColor((i + j) % 2 == 0
+					? sf::Color(118, 150, 86)
+					: sf::Color(238, 238, 210));
+			}
+			t.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
 			window.draw(t.TileShape);
 		}
 	}
 }
+
 
 // Draw the chess pieces for both players
 void GameManager::DrawFigures(sf::RenderWindow& window,
@@ -159,7 +164,6 @@ void GameManager::DrawGame()
 	// Highlights
 	DrawHighlights(_window, _tiles);
 }
-
 
 void ClearHighlitghts()
 {
@@ -237,6 +241,40 @@ void GameManager::Update()
 							_currentRound = !_currentRound;
 							previousSelectedTile->SetFigure(nullptr);
 							previousSelectedTile = nullptr;
+
+                            // Check if the king is threatened
+							// Najdi krále soupeøe (ten, kdo je nyní na tahu)
+							std::vector<Figure*>& currentFigures = _currentRound ? _playerOneFigures : _playerTwoFigures;
+							std::vector<Figure*>& enemyFigures = !_currentRound ? _playerOneFigures : _playerTwoFigures;
+
+							for (auto* figure : currentFigures)
+							{
+								King* king = dynamic_cast<King*>(figure);
+								if (king)
+								{
+									// Zavoláme metodu pro kontrolu ohrožení
+									bool isThreatened = king->IsThreatened(_tiles, enemyFigures);
+
+									Tile* kingTile = king->GetCurrentTile(_tiles);
+									if (isThreatened)
+									{
+										// Král je v šachu – zvýrazni dlaždici èervenì
+										kingTile->TileShape.setFillColor(sf::Color(185, 44, 35));
+                                        kingTile->SetInCheck(true);
+										std::cout << (_currentRound ? "White" : "Black") << " King is in check!" << std::endl;
+									}
+									else
+									{
+										// Není ohrožen – vra zpìt pùvodní barvu
+										if ((kingTile->GetX() + kingTile->GetY()) % 2 == 0)
+											kingTile->TileShape.setFillColor(sf::Color(118, 150, 86)); // tmavá
+										else
+											kingTile->TileShape.setFillColor(sf::Color(238, 238, 210)); // svìtlá
+                                        kingTile->SetInCheck(false);
+									}
+									break; // našli jsme krále, konèíme smyèku
+								}
+							}
 						}
                     } // When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
