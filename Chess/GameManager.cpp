@@ -1,6 +1,9 @@
 #include "GameManager.h"
-/* TODO: Handle input events, update game state*/
-// Update game state (e.g., check for win conditions, update figure positions)
+/* TODO: Handle input events, update game state
+* Add AI player bot for singleplayer mode
+* Implement networking for multiplayer mode
+* Handle checkmate and stalemate conditions
+*/
 
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
@@ -54,6 +57,11 @@ void GameManager::InitializeBoard()
 	{
 		int backRankRow = isWhite ? 0 : 7;
 		int pawnRow = isWhite ? 1 : 6;
+
+		//int backRankRow = isWhite ? 7 : 0;
+		//int pawnRow = isWhite ? 6 : 1;
+
+
 		auto& figures = isWhite ? _playerOneFigures : _playerTwoFigures;
 
 		// Back rank
@@ -105,8 +113,8 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 			if (!t.IsInCheck())
 			{
 				t.TileShape.setFillColor((i + j) % 2 == 0
-					? sf::Color(118, 150, 86)
-					: sf::Color(238, 238, 210));
+                    ? sf::Color(238, 238, 210) // light beige
+                    : sf::Color(118, 150, 86)); // dark green
 			}
 			t.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
 			window.draw(t.TileShape);
@@ -120,13 +128,13 @@ void GameManager::DrawFigures(sf::RenderWindow& window,
 	const std::vector<Figure*>& black)
 {
 	auto drawSide = [&](const std::vector<Figure*>& figures)
+	{
+		for (auto figure : figures)
 		{
-			for (auto figure : figures)
-			{
-				if (figure)
-					window.draw(figure->GetSprite());
-			}
-		};
+			if (figure)
+				window.draw(figure->GetSprite());
+		}
+	};
 	drawSide(white);
 	drawSide(black);
 }
@@ -138,15 +146,15 @@ void GameManager::DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8])
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			Tile& t = tiles[i][j];
-			if (t.IsHighlighted())
+			Tile& tile = tiles[i][j];
+			if (tile.IsHighlighted())
 			{
-				t.HighLight.setFillColor(sf::Color(255, 0, 0, 128));
-				t.HighLight.setPosition(sf::Vector2f(
-					float(t.GetX() * 128 + 44),
-					float(t.GetY() * 128 + 44)
+				tile.HighLight.setFillColor(sf::Color(255, 0, 0, 128));
+				tile.HighLight.setPosition(sf::Vector2f(
+					float(tile.GetX() * 128 + 44),
+					float(tile.GetY() * 128 + 44)
 				));
-				window.draw(t.HighLight);
+				window.draw(tile.HighLight);
 			}
 		}
 	}
@@ -169,9 +177,7 @@ void GameManager::ClearHighlitghts()
 	for (size_t i = 0; i < 8; i++)
 	{
 		for (size_t j = 0; j < 8; j++)
-		{
 			_tiles[i][j].Highlight(false);
-		}
 	}
 }
 
@@ -242,7 +248,9 @@ void GameManager::Update()
 				mousePos = sf::Mouse::getPosition(_window);
                 int tileX = mousePos.x / 128;
                 int tileY = mousePos.y / 128;
-                //cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << endl;
+
+                cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << endl;
+
 				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
 				{
 					selectedTile = &_tiles[tileX][tileY];
@@ -255,6 +263,8 @@ void GameManager::Update()
 					cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes" : " No") << endl;
                     cout << "Current round (true=white, false=black): " << (_currentRound ? "White" : "Black") << endl;
                     cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes" : " No") << endl;
+					cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White" : "Black") : "N/A") << endl;
+                    cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << endl;
 
                     // When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
@@ -269,6 +279,7 @@ void GameManager::Update()
 							else
 								previousSelectedTile->GetFigure()->Move(selectedTile);
 
+                            previousSelectedTile->SetInCheck(false);
                             CheckForCheck();
 							ClearHighlitghts();
 							// Switch turns
@@ -282,10 +293,12 @@ void GameManager::Update()
                     } // When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
+                        CheckForCheck();
                         vector<Tile*> possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
                         ClearHighlitghts();
                         selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
 						previousSelectedTile = selectedTile;
+						//cout << "Figure type: " << typeid(*selectedFigure).name() << endl;
 					}
                 }
 			}

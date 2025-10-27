@@ -10,6 +10,7 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 	string key = IsWhite ? "bishop_white" : "bishop_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
+	//Sprite.setPosition(sf::Vector2f(float(X * 128), float((7 - Y) * 128)));
 }
 
 vector<Tile*> Bishop::GetPossibleMoves(Tile tiles[8][8])

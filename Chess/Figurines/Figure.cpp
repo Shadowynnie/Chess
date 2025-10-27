@@ -49,9 +49,7 @@ void Figure::Move(Tile* tile, std::vector<Figure*>& enemyFigures)
 void Figure::HighlightPossibleMoves(vector<Tile*>& possibleMoves)
 {
 	for (size_t i = 0; i < possibleMoves.size(); i++)
-	{
         possibleMoves.at(i)->Highlight(true);
-	}
 }
 
 int Figure::GetX() const
