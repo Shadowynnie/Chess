@@ -22,8 +22,8 @@ public:
 	Figure() : X(0), Y(0), IsWhite(true), Sprite(Texture){}
 	virtual ~Figure() = default;
 
-	void Move(Tile* tile);
-	void Move(Tile* tile, std::vector<Figure*>& enemyFigures);
+	void Move(Tile* tile, Tile* previousTile);
+	void Move(Tile* tile, Tile* previousTile, std::vector<Figure*>& enemyFigures);
 	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8]) = 0;
     void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
 	virtual sf::Sprite GetSprite() const;

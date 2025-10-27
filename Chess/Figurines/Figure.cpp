@@ -14,10 +14,13 @@ sf::Sprite Figure::GetSprite() const
 	return Sprite;
 }
 
-void Figure::Move(Tile* tile) // Move the figure to the specified tile position
+void Figure::Move(Tile* tile, Tile* previousTile) // Move the figure to the specified tile position
 {
 	if (tile != nullptr)
 	{
+		if (previousTile != nullptr)
+			previousTile->SetInCheck(false);
+
         X = tile->GetX();
         Y = tile->GetY();
 		Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
@@ -25,7 +28,7 @@ void Figure::Move(Tile* tile) // Move the figure to the specified tile position
 	}
 }
 
-void Figure::Move(Tile* tile, std::vector<Figure*>& enemyFigures)
+void Figure::Move(Tile* tile, Tile* previousTile, std::vector<Figure*>& enemyFigures)
 {
 	if (tile != nullptr)
 	{
@@ -43,6 +46,7 @@ void Figure::Move(Tile* tile, std::vector<Figure*>& enemyFigures)
 		Y = tile->GetY();
 		Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 		tile->SetFigure(this);
+        previousTile->SetInCheck(false);
 	}
 }
 

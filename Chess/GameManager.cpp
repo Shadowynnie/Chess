@@ -3,6 +3,7 @@
 * Add AI player bot for singleplayer mode
 * Implement networking for multiplayer mode
 * Handle checkmate and stalemate conditions
+* Set colors as constants or enums
 */
 
 
@@ -58,10 +59,6 @@ void GameManager::InitializeBoard()
 		int backRankRow = isWhite ? 0 : 7;
 		int pawnRow = isWhite ? 1 : 6;
 
-		//int backRankRow = isWhite ? 7 : 0;
-		//int pawnRow = isWhite ? 6 : 1;
-
-
 		auto& figures = isWhite ? _playerOneFigures : _playerTwoFigures;
 
 		// Back rank
@@ -107,17 +104,20 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 	{
 		for (int j = 0; j < 8; ++j)
 		{
-			Tile& t = tiles[i][j];
+			Tile& tile = tiles[i][j];
 
-			// pokud barva není èervená (král v šachu), pøebarvi na základní barvu
-			if (!t.IsInCheck())
+            // if the tile is not in check, use standard colors
+			if (!tile.IsInCheck())
 			{
-				t.TileShape.setFillColor((i + j) % 2 == 0
+				tile.TileShape.setFillColor((i + j) % 2 == 0
                     ? sf::Color(238, 238, 210) // light beige
                     : sf::Color(118, 150, 86)); // dark green
 			}
-			t.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
-			window.draw(t.TileShape);
+			else
+				tile.TileShape.setFillColor(sf::Color(173, 58, 41)); // red color for check
+
+			tile.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
+			window.draw(tile.TileShape);
 		}
 	}
 }
@@ -183,36 +183,36 @@ void GameManager::ClearHighlitghts()
 
 void GameManager::CheckForCheck()
 {
-	// Urèíme, kdo je právì na tahu a kdo je soupeø
-	std::vector<Figure*>& currentFigures = _currentRound ? _playerOneFigures : _playerTwoFigures;
-	std::vector<Figure*>& enemyFigures = !_currentRound ? _playerOneFigures : _playerTwoFigures;
-
-	for (auto* figure : currentFigures)
+	// Check if either king is in check
+	auto checkKing = [&](bool isWhiteKing)
 	{
-		if (auto* king = dynamic_cast<King*>(figure))
+		Tile* kingTile = nullptr;
+		auto& friendlyFigures = isWhiteKing ? _playerOneFigures : _playerTwoFigures;
+		auto& enemyFigures = isWhiteKing ? _playerTwoFigures : _playerOneFigures;
+		// Find the king's tile
+		for (auto figure : friendlyFigures)
 		{
-			Tile* kingTile = king->GetCurrentTile(_tiles);
-			bool isThreatened = king->IsThreatened(_tiles, enemyFigures);
-
-			// Vždy nejdøív resetuj barvu na pùvodní
-			sf::Color baseColor = (kingTile->GetX() + kingTile->GetY()) % 2 == 0
-				? sf::Color(118, 150, 86)   // tmavá
-				: sf::Color(238, 238, 210); // svìtlá
-
-			kingTile->TileShape.setFillColor(baseColor);
-			kingTile->SetInCheck(false);
-
-			// Pokud je král v šachu, pøebarvíme
-			if (isThreatened)
+			if (typeid(*figure) == typeid(King))
 			{
-				kingTile->TileShape.setFillColor(sf::Color(185, 44, 35));
-				kingTile->SetInCheck(true);
-				std::cout << (_currentRound ? "White" : "Black") << " King is in check!" << std::endl;
+				kingTile = figure->GetCurrentTile(_tiles);
+				break;
 			}
-
-			break; // našli jsme krále, mùžeme skonèit
 		}
-	}
+		if (kingTile)
+		{
+			King* king = dynamic_cast<King*>(kingTile->GetFigure());
+			if (king && king->IsThreatened(_tiles, enemyFigures))
+			{
+				kingTile->SetInCheck(true);
+                //kingTile->TileShape.setFillColor(sf::Color::Red); // Highlight the king's tile in red
+				cout << (isWhiteKing ? "White" : "Black") << " King is in check!" << endl;
+			}
+			else
+				kingTile->SetInCheck(false);
+		}
+	};
+	checkKing(true);  // Check white king
+    checkKing(false); // Check black king
 }
 
 void GameManager::Update() 
@@ -221,8 +221,6 @@ void GameManager::Update()
 	sf::Vector2i mousePos;
 	Tile* selectedTile = nullptr;
     Tile* previousSelectedTile = nullptr;
-	Figure* selectedFigure = nullptr;
-    Figure* previousSelectedFigure = nullptr;
 
     // GAME LOOP
 	while (_window.isOpen())
@@ -242,8 +240,7 @@ void GameManager::Update()
 				_currentState = GameState::MAIN_MENU;
                 stateFunctions[_currentState]();
 			}
-			if (event->is<sf::Event::MouseButtonPressed>() &&
-				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
+			if (event->is<sf::Event::MouseButtonPressed>() && (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
 				mousePos = sf::Mouse::getPosition(_window);
                 int tileX = mousePos.x / 128;
@@ -265,6 +262,7 @@ void GameManager::Update()
                     cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes" : " No") << endl;
 					cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White" : "Black") : "N/A") << endl;
                     cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << endl;
+                    cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes" : " No") << endl;
 
                     // When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
@@ -272,34 +270,30 @@ void GameManager::Update()
 						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
 						{
 							if (selectedTile->IsOccupied())
-							{
+                            {	// Capture opponent's piece
 								if (selectedTile->GetFigure()->GetColor() != _currentRound)
-									previousSelectedTile->GetFigure()->Move(selectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
+									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
 							}
 							else
-								previousSelectedTile->GetFigure()->Move(selectedTile);
-
-                            previousSelectedTile->SetInCheck(false);
-                            CheckForCheck();
+								previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile);
 							ClearHighlitghts();
 							// Switch turns
 							_currentRound = !_currentRound;
 							previousSelectedTile->SetFigure(nullptr);
 							previousSelectedTile = nullptr;
-							// Check if the next player's king is in check
-							CheckForCheck();
 						}
-						
                     } // When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
-                        CheckForCheck();
+                        //CheckForCheck();
                         vector<Tile*> possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
                         ClearHighlitghts();
                         selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
 						previousSelectedTile = selectedTile;
 						//cout << "Figure type: " << typeid(*selectedFigure).name() << endl;
+						//CheckForCheck();
 					}
+					CheckForCheck();
                 }
 			}
 		}

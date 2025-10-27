@@ -6,26 +6,17 @@ King::King(int _x, int _y, bool _isWhite)
 	Y = _y;
 	IsWhite = _isWhite;
 
-	/*
-	if (isWhite)
-	{
-		sprite = assetManager.kingSpriteWhite; // Use the asset manager to get the white bishop sprite
-	}
-	else
-	{
-		sprite = assetManager.kingSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}*/
 	string key = IsWhite ? "king_white" : "king_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
-	//Sprite.setPosition(sf::Vector2f(float(X * 128), float((7 - Y) * 128)));
 }
 
 vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile*> possibleMoves;
 	// King moves one square in any direction
-	int kingMoves[8][2] = {
+	int kingMoves[8][2] = 
+	{
 		{1, 0}, {-1, 0}, {0, 1}, {0, -1},
 		{1, 1}, {1, -1}, {-1, 1}, {-1, -1}
 	};
