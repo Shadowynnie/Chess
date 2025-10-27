@@ -11,6 +11,54 @@ King::King(int _x, int _y, bool _isWhite)
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
 }
 
+vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFigures)
+{
+	vector<Tile*> possibleMoves;
+
+	int kingMoves[8][2] = 
+	{
+		{1, 0}, {-1, 0}, {0, 1}, {0, -1},
+		{1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+	};
+
+	for (const auto& move : kingMoves)
+	{
+		int newX = X + move[0];
+		int newY = Y + move[1];
+		if (newX < 0 || newX >= 8 || newY < 0 || newY >= 8)
+			continue;
+
+		Tile* target = &tiles[newX][newY];
+
+        // King can move to an unoccupied tile or capture an enemy piece
+		if (!target->IsOccupied() ||
+			(target->GetFigure() && target->GetFigure()->GetColor() != IsWhite))
+		{
+            // Simulating a move to check for threats
+			int oldX = X;
+			int oldY = Y;
+			Figure* captured = target->GetFigure();
+
+            // Temporarily move the king
+			X = newX;
+			Y = newY;
+			target->SetFigure(this);
+
+			bool threatened = IsThreatened(tiles, enemyFigures);
+
+            // Return to original position
+			X = oldX;
+			Y = oldY;
+			target->SetFigure(captured);
+
+            // If not threatened, add to possible moves
+			if (!threatened)
+				possibleMoves.push_back(target);
+		}
+	}
+	return possibleMoves;
+}
+/**/
 vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile*> possibleMoves;
@@ -38,7 +86,7 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 	return possibleMoves;
 }
 
-bool King::IsThreatened(Tile tiles[8][8], std::vector<Figure*>& enemyFigures)
+bool King::IsThreatened(Tile tiles[8][8], vector<Figure*>& enemyFigures)
 {
 	for (auto& enemy : enemyFigures)
 	{

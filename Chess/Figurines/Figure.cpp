@@ -50,6 +50,12 @@ void Figure::Move(Tile* tile, Tile* previousTile, std::vector<Figure*>& enemyFig
 	}
 }
 
+vector<Tile*> Figure::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFigures)
+{
+    // Default behaior for figures that do not consider enemy figures
+	return GetPossibleMoves(tiles);
+}
+
 void Figure::HighlightPossibleMoves(vector<Tile*>& possibleMoves)
 {
 	for (size_t i = 0; i < possibleMoves.size(); i++)

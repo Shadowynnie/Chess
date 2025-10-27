@@ -24,7 +24,8 @@ public:
 
 	void Move(Tile* tile, Tile* previousTile);
 	void Move(Tile* tile, Tile* previousTile, std::vector<Figure*>& enemyFigures);
-	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8]) = 0;
+	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8])=0;
+	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFigures);
     void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
 	virtual sf::Sprite GetSprite() const;
 

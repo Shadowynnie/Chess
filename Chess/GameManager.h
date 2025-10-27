@@ -6,13 +6,6 @@
 #include <functional>
 
 #include "Tile.h"
-#include "Figurines/Figure.h"
-#include "Figurines/Bishop.h"
-#include "Figurines/King.h"
-#include "Figurines/Knight.h"
-#include "Figurines/Rook.h"
-#include "Figurines/Queen.h"
-#include "Figurines/Pawn.h"
 
 using std::vector;
 using std::map;

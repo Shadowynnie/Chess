@@ -1,11 +1,20 @@
 #include "GameManager.h"
+#include "Colors.h"
+
+#include "Figurines/Figure.h"
+#include "Figurines/Bishop.h"
+#include "Figurines/King.h"
+#include "Figurines/Knight.h"
+#include "Figurines/Rook.h"
+#include "Figurines/Queen.h"
+#include "Figurines/Pawn.h"
+
 /* TODO: Handle input events, update game state
 * Add AI player bot for singleplayer mode
 * Implement networking for multiplayer mode
 * Handle checkmate and stalemate conditions
 * Set colors as constants or enums
 */
-
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
@@ -110,11 +119,11 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 			if (!tile.IsInCheck())
 			{
 				tile.TileShape.setFillColor((i + j) % 2 == 0
-                    ? sf::Color(238, 238, 210) // light beige
-                    : sf::Color(118, 150, 86)); // dark green
+					? Colors::LightTile // light beige
+					: Colors::DarkTile);// dark green
 			}
 			else
-				tile.TileShape.setFillColor(sf::Color(173, 58, 41)); // red color for check
+				tile.TileShape.setFillColor(Colors::InCheckTile); // red color for check
 
 			tile.TileShape.setPosition(sf::Vector2f(float(i * 128), float(j * 128)));
 			window.draw(tile.TileShape);
@@ -149,7 +158,7 @@ void GameManager::DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8])
 			Tile& tile = tiles[i][j];
 			if (tile.IsHighlighted())
 			{
-				tile.HighLight.setFillColor(sf::Color(255, 0, 0, 128));
+				tile.HighLight.setFillColor(Colors::AvailableMove);
 				tile.HighLight.setPosition(sf::Vector2f(
 					float(tile.GetX() * 128 + 44),
 					float(tile.GetY() * 128 + 44)
@@ -204,7 +213,6 @@ void GameManager::CheckForCheck()
 			if (king && king->IsThreatened(_tiles, enemyFigures))
 			{
 				kingTile->SetInCheck(true);
-                //kingTile->TileShape.setFillColor(sf::Color::Red); // Highlight the king's tile in red
 				cout << (isWhiteKing ? "White" : "Black") << " King is in check!" << endl;
 			}
 			else
@@ -282,16 +290,22 @@ void GameManager::Update()
 							previousSelectedTile->SetFigure(nullptr);
 							previousSelectedTile = nullptr;
 						}
-                    } // When the player clicks on a figure for the first time
+                    }
+					// When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
-                        //CheckForCheck();
-                        vector<Tile*> possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
+						vector<Tile*> possibleMoves;
+						if (typeid(*selectedTile->GetFigure()) == typeid(King))
+						{
+							auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+                            possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+						}
+						else
+							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
+                        
                         ClearHighlitghts();
                         selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
 						previousSelectedTile = selectedTile;
-						//cout << "Figure type: " << typeid(*selectedFigure).name() << endl;
-						//CheckForCheck();
 					}
 					CheckForCheck();
                 }
