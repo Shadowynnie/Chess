@@ -1,8 +1,6 @@
 #pragma once
 #include "Figure.h"
 
-//class Rook; // Forward declaration for castling checks
-
 class King : public Figure
 {
     bool _hasMoved = false; // To track if the king has moved (for castling rules)

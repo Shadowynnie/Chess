@@ -9,7 +9,6 @@ Pawn::Pawn(int _x, int _y, bool _isWhite)
 	string key = IsWhite ? "pawn_white" : "pawn_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
-	//Sprite.setPosition(sf::Vector2f(float(X * 128), float((7 - Y) * 128)));
 }
 
 vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
@@ -24,9 +23,7 @@ vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
 		if ((IsWhite && Y == 1) || (!IsWhite && Y == 6))
 		{
 			if (!tiles[X][Y + 2 * direction].IsOccupied())
-			{
 				possibleMoves.push_back(&tiles[X][Y + 2 * direction]);
-			}
 		}
 	}
 	// Capture diagonally

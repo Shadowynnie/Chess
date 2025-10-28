@@ -57,12 +57,12 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFig
 		}
 	}
 	// --- Castling check ---
-	if (!_hasMoved) // Král se ještì nepohnul
+    if (!_hasMoved) // King has not moved yet
 	{
-		// Smìr podle barvy
+        // Directon according to color
 		int row = IsWhite ? 0 : 7;
 
-		// Krátká rošáda (na pravou stranu)
+        // Short castling (to the right side)
 		Tile* rookTileKingside = &tiles[7][row];
 		Figure* rookKingside = rookTileKingside->GetFigure();
 		if (rookKingside && typeid(*rookKingside) == typeid(Rook))
@@ -70,10 +70,10 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFig
 			Rook* rook = dynamic_cast<Rook*>(rookKingside);
 			if (rook && !rook->HasMoved())
 			{
-				// Pole mezi králem a vìží musí být prázdná
+                // Tiles between king and rook must be unoccupied
 				if (!tiles[5][row].IsOccupied() && !tiles[6][row].IsOccupied())
 				{
-					// Král nesmí být v šachu, ani procházet ohroženými poli
+                    // The king must not be in check, pass through or land on threatened squares
 					bool safePath = true;
 					for (int x = 4; x <= 6; ++x)
 					{
@@ -84,14 +84,14 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFig
 							break;
 						}
 					}
-					X = 4; Y = row; // vrátit zpìt
+                    X = 4; Y = row; // return to original position
 					if (safePath)
-						possibleMoves.push_back(&tiles[6][row]); // cílová pozice krále
+                        possibleMoves.push_back(&tiles[6][row]); // King's target position
 				}
 			}
 		}
 
-		// Dlouhá rošáda (na levou stranu)
+        // Long castling (to the left side)
 		Tile* rookTileQueenside = &tiles[0][row];
 		Figure* rookQueenside = rookTileQueenside->GetFigure();
 		if (rookQueenside && typeid(*rookQueenside) == typeid(Rook))
@@ -115,7 +115,7 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFig
 					}
 					X = 4; Y = row;
 					if (safePath)
-						possibleMoves.push_back(&tiles[2][row]); // cílová pozice krále
+                        possibleMoves.push_back(&tiles[2][row]); // King's target position
 				}
 			}
 		}

@@ -20,7 +20,6 @@ void Tile::SetPosition(int x, int y)
 void Tile::SetFigure(Figure* figure)
 {
 	_occupant = figure;
-	//_isOccupied = (figure != nullptr);
 }
 
 void Tile::Highlight(bool isHighlighted)
