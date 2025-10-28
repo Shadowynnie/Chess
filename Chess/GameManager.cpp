@@ -9,11 +9,11 @@
 #include "Figurines/Queen.h"
 #include "Figurines/Pawn.h"
 
-/* TODO: Handle input events, update game state
-* Add AI player bot for singleplayer mode
+/* TODO: Add AI player bot for singleplayer mode
 * Implement networking for multiplayer mode
 * Handle checkmate and stalemate conditions
-* Set colors as constants or enums
+* Add en passant ability to Pawn
+* Add the option to promote Pawn to another piece
 */
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
@@ -271,6 +271,7 @@ void GameManager::Update()
 					cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White" : "Black") : "N/A") << endl;
                     cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << endl;
                     cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes" : " No") << endl;
+                    cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << endl;
 
                     // When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
@@ -283,11 +284,10 @@ void GameManager::Update()
 									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
 							}
 							else
-								previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile);
+								previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile,_tiles);
 							ClearHighlitghts();
 							// Switch turns
 							_currentRound = !_currentRound;
-							previousSelectedTile->SetFigure(nullptr);
 							previousSelectedTile = nullptr;
 						}
                     }

@@ -6,19 +6,9 @@ Rook::Rook(int _x, int _y, bool _isWhite)
 	Y = _y;
 	IsWhite = _isWhite;
 
-	/*
-	if (isWhite)
-	{
-		sprite = assetManager.rookSpriteWhite; // Use the asset manager to get the white bishop sprite
-	}
-	else
-	{
-		sprite = assetManager.rookSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}*/
 	string key = IsWhite ? "rook_white" : "rook_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
-	//Sprite.setPosition(sf::Vector2f(float(X * 128), float((7 - Y) * 128)));
 }
 
 vector<Tile*> Rook::GetPossibleMoves(Tile tiles[8][8])
@@ -56,4 +46,15 @@ vector<Tile*> Rook::GetPossibleMoves(Tile tiles[8][8])
 		}
 	}
 	return possibleMoves;
+}
+
+void Rook::Move(Tile* tile, Tile* previousTile, Tile tiles[8][8])
+{
+	_hasMoved = true;
+	Figure::Move(tile, previousTile);
+}
+
+bool Rook::HasMoved() const
+{
+	return _hasMoved;
 }
