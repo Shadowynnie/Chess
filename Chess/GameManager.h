@@ -49,7 +49,7 @@ public:
 	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
 	static void ClearHighlitghts();
     static void CheckForCheck(); // Function to check if a king is in check
-
+    static void PromotePawn(Figure* pawn); // Function to handle pawn promotion
 	static void Update(); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
     static void HostGame(); // Function to host a game

@@ -7,5 +7,7 @@ public:
 	Pawn(int _x, int _y, bool _isWhite);
 	~Pawn() = default; // Destructor
 	vector<Tile*> GetPossibleMoves(Tile tiles[8][8]) override;
+    bool CanPromote() const;
+	//void Move(Tile* tile, Tile* previousTile, vector<Figure*>& friendlyFigures) override;
 	Pawn() = default;
 };

@@ -1,4 +1,8 @@
 #include "Pawn.h"
+// Includes for promotion
+#include "Queen.h"
+#include "Bishop.h"
+#include "Rook.h"
 
 Pawn::Pawn(int _x, int _y, bool _isWhite)
 {
@@ -45,4 +49,11 @@ vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
 		possibleMoves.push_back(&tiles[X + 1][Y + direction]);
 	}
 	return possibleMoves;
+}
+
+bool Pawn::CanPromote() const
+{
+	// If a white pawn reaches the opposite end of the chessboard (y == 7)
+	// or the black pawn reaches the opposite end of the chessboard (y == 0)
+	return (IsWhite && Y == 7) || (!IsWhite && Y == 0);
 }
