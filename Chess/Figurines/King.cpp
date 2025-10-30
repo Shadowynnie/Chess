@@ -73,7 +73,8 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFig
 
         // King can move to an unoccupied tile or capture an enemy piece
 		if (!target->IsOccupied() ||
-			(target->GetFigure() && target->GetFigure()->GetColor() != IsWhite))
+			(target->GetFigure() &&
+			target->GetFigure()->GetColor() != IsWhite))
 		{
             // Simulating a move to check for threats
 			int oldX = X;

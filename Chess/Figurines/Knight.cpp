@@ -6,19 +6,9 @@ Knight::Knight(int _x, int _y, bool _isWhite)
 	Y = _y;
 	IsWhite = _isWhite;
 	
-	/*
-	if (isWhite)
-	{
-		sprite = assetManager.knightSpriteWhite; // Use the asset manager to get the white bishop sprite
-	}
-	else
-	{
-		sprite = assetManager.knightSpriteBlack; // Use the asset manager to get the black bishop sprite
-	}*/
 	string key = IsWhite ? "knight_white" : "knight_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
-	//Sprite.setPosition(sf::Vector2f(float(X * 128), float((7 - Y) * 128)));
 }
 
 vector<Tile*> Knight::GetPossibleMoves(Tile tiles[8][8])
@@ -38,7 +28,9 @@ vector<Tile*> Knight::GetPossibleMoves(Tile tiles[8][8])
 		{
 			Tile* targetTile = &tiles[newX][newY];
 			// If the tile is not occupied or occupied by an opponent's piece
-			if (!targetTile->IsOccupied() || (targetTile->IsOccupied() && targetTile->GetFigure()->GetColor() != IsWhite))
+			if (!targetTile->IsOccupied() ||
+				(targetTile->IsOccupied() &&
+				targetTile->GetFigure()->GetColor() != IsWhite))
 			{
 				possibleMoves.push_back(targetTile);
 			}

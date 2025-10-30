@@ -15,7 +15,8 @@ vector<Tile*> Rook::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile*> possibleMoves;
 	// Directions: up, down, left, right
-	const int directions[4][2] = {
+	const int directions[4][2] = 
+	{
 		{0, 1},   // Up
 		{0, -1},  // Down
 		{-1, 0},  // Left
@@ -30,15 +31,11 @@ vector<Tile*> Rook::GetPossibleMoves(Tile tiles[8][8])
 		while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8) // Stay within board bounds
 		{
 			if (!tiles[nx][ny].IsOccupied())
-			{
 				possibleMoves.push_back(&tiles[nx][ny]); // Empty tile
-			}
 			else
 			{
 				if (tiles[nx][ny].GetFigure()->GetColor() != IsWhite)
-				{
 					possibleMoves.push_back(&tiles[nx][ny]); // Capture opponent's piece
-				}
 				break; // Stop in this direction after hitting any piece
 			}
 			nx += dx;

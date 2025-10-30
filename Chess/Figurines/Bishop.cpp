@@ -10,7 +10,6 @@ Bishop::Bishop(int _x, int _y, bool _isWhite)
 	string key = IsWhite ? "bishop_white" : "bishop_black";
 	Sprite = AssetManager::GetSprite(key);
 	Sprite.setPosition(sf::Vector2f(float(X * 128), float(Y * 128)));
-	//Sprite.setPosition(sf::Vector2f(float(X * 128), float((7 - Y) * 128)));
 }
 
 vector<Tile*> Bishop::GetPossibleMoves(Tile tiles[8][8])
@@ -27,12 +26,11 @@ vector<Tile*> Bishop::GetPossibleMoves(Tile tiles[8][8])
 		while (x >= 0 && x < 8 && y >= 0 && y < 8)
 		{
 			if (!tiles[x][y].IsOccupied())
-			{
 				possibleMoves.push_back(&tiles[x][y]);
-			}
 			else
 			{
-				if (tiles[x][y].GetFigure() != nullptr && tiles[x][y].GetFigure()->GetColor() != IsWhite)
+				if (tiles[x][y].GetFigure() != nullptr &&
+					tiles[x][y].GetFigure()->GetColor() != IsWhite)
 				{
 					possibleMoves.push_back(&tiles[x][y]); // Can capture opponent's piece
 				}

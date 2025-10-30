@@ -16,7 +16,9 @@ vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
 	vector<Tile*> possibleMoves;
 	int direction = IsWhite ? 1 : -1; // White moves "up" (increasing Y), Black moves "down" (decreasing Y)
 	// Move forward one tile
-	if (Y + direction >= 0 && Y + direction < 8 && !tiles[X][Y + direction].IsOccupied())
+	if (Y + direction >= 0 &&
+		Y + direction < 8 &&
+		!tiles[X][Y + direction].IsOccupied())
 	{
 		possibleMoves.push_back(&tiles[X][Y + direction]);
 		// Move forward two tiles from starting position
@@ -27,12 +29,17 @@ vector<Tile*> Pawn::GetPossibleMoves(Tile tiles[8][8])
 		}
 	}
 	// Capture diagonally
-	if (X - 1 >= 0 && Y + direction >= 0 && Y + direction < 8 && tiles[X - 1][Y + direction].IsOccupied() &&
+	if (X - 1 >= 0 &&
+		Y + direction >= 0 &&
+		Y + direction < 8 &&
+		tiles[X - 1][Y + direction].IsOccupied() &&
 		tiles[X - 1][Y + direction].GetFigure()->GetColor() != IsWhite)
 	{
 		possibleMoves.push_back(&tiles[X - 1][Y + direction]);
 	}
-	if (X + 1 < 8 && Y + direction >= 0 && Y + direction < 8 && tiles[X + 1][Y + direction].IsOccupied() &&
+	if (X + 1 < 8 &&
+		Y + direction >= 0 &&
+		Y + direction < 8 && tiles[X + 1][Y + direction].IsOccupied() &&
 		tiles[X + 1][Y + direction].GetFigure()->GetColor() != IsWhite)
 	{
 		possibleMoves.push_back(&tiles[X + 1][Y + direction]);

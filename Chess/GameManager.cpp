@@ -9,11 +9,15 @@
 #include "Figurines/Queen.h"
 #include "Figurines/Pawn.h"
 
-/* TODO: Add AI player bot for singleplayer mode
-* Implement networking for multiplayer mode
-* Handle checkmate and stalemate conditions
+/* TODO: 
 * Add en passant ability to Pawn
-* Add the option to promote Pawn to another piece
+* Add the option to promote Pawn to another piece once the pawn reaches the opposite end of the board
+* Implement networking for multiplayer mode
+* Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu
+* Add paused menu with options to resume, restart(singleplayer mode), leave match(multiplayer) / go to main menu
+* Add configuration menu to set network settings, sound settings, etc.
+* Add AI player bot for singleplayer mode
+* Get rid of global variables where possible
 */
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
@@ -285,6 +289,7 @@ void GameManager::Update()
 							}
 							else
 								previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile,_tiles);
+
 							ClearHighlitghts();
 							// Switch turns
 							_currentRound = !_currentRound;
