@@ -10,9 +10,6 @@
 using std::vector;
 using std::map;
 using std::function;
-using std::cerr;
-using std::endl;
-using std::cout;
 
 enum class GameState
 {
@@ -45,7 +42,7 @@ public:
     // Drawing functions
 	static void DrawGame(); // Function to draw the chessboard and figures on the window
 	static void DrawTiles(sf::RenderWindow& window, Tile tiles[8][8]);
-	static void DrawFigures(sf::RenderWindow& window, const std::vector<Figure*>& white, const std::vector<Figure*>& black);
+	static void DrawFigures(sf::RenderWindow& window, const vector<Figure*>& white, const vector<Figure*>& black);
 	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
 	static void ClearHighlitghts();
     static void CheckForCheck(); // Function to check if a king is in check

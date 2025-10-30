@@ -9,6 +9,10 @@
 #include "Figurines/Queen.h"
 #include "Figurines/Pawn.h"
 
+using std::cerr;
+using std::endl;
+using std::cout;
+
 /* TODO: 
 * Add option menu to choose piece type on pawn promotion
 * Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu

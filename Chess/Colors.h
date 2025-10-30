@@ -15,7 +15,7 @@ namespace Colors
 
     // Colors for special indications (optional)
     inline const sf::Color LastMoveTile = sf::Color(246, 246, 105); // yellow shade (last turn)
-    inline const sf::Color AvailableMove = sf::Color(30, 144, 255, 100); // blue shade for available moves
+    inline const sf::Color AvailableMove = sf::Color(30, 144, 255, 150); // blue shade for available moves
 
     // Edges or grids (if you would like to draw a frame)
     inline const sf::Color BoardBorder = sf::Color(50, 50, 50);
