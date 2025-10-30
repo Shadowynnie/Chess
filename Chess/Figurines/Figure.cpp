@@ -28,7 +28,7 @@ void Figure::Move(Tile* tile, Tile* previousTile, Tile tiles[8][8]) // Move the 
 	}
 }
 
-void Figure::Move(Tile* tile, Tile* previousTile, std::vector<Figure*>& enemyFigures)
+void Figure::Move(Tile* tile, Tile* previousTile, vector<Figure*>& enemyFigures)
 {
 	if (tile != nullptr)
 	{

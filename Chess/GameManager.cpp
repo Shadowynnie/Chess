@@ -10,10 +10,9 @@
 #include "Figurines/Pawn.h"
 
 /* TODO: 
-* Add en passant ability to Pawn
 * Add option menu to choose piece type on pawn promotion
-* Implement networking for multiplayer mode
 * Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu
+* Implement networking for multiplayer mode
 * Add paused menu with options to resume, restart(singleplayer mode), leave match(multiplayer) / go to main menu
 * Add configuration menu to set network settings, sound settings, etc.
 * Add AI player bot for singleplayer mode
@@ -249,6 +248,17 @@ void GameManager::PromotePawn(Figure* pawn)
 	cout << (isWhite ? "White" : "Black") << " Pawn promoted to Queen at (" << x << ", " << y << ")" << endl;
 }
 
+void GameManager::ResetEnPassantFlags()
+{
+	// Reset en passant flags for opponent pawns
+	auto& allPawns = _currentRound ? _playerOneFigures : _playerTwoFigures;
+	for (auto* fig : allPawns)
+	{
+		if (typeid(*fig) == typeid(Pawn))
+			dynamic_cast<Pawn*>(fig)->EnableEnPassant(false);
+	}
+}
+
 void GameManager::Update() 
 {
 	std::optional<sf::Event> event;
@@ -287,17 +297,17 @@ void GameManager::Update()
 					selectedTile = &_tiles[tileX][tileY];
 
                     // Debug information
-                    //cout << "-------------------------" << endl;
-                    //cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << endl;
+                    cout << "-------------------------" << endl;
+                    cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << endl;
                     cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << endl;
 					//cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes" : " No") << endl;
 					//cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes" : " No") << endl;
-                    //cout << "Current round (true=white, false=black): " << (_currentRound ? "White" : "Black") << endl;
+                    cout << "Current round (true=white, false=black): " << (_currentRound ? "White" : "Black") << endl;
                     //cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes" : " No") << endl;
 					//cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White" : "Black") : "N/A") << endl;
                     //cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << endl;
                     //cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes" : " No") << endl;
-                    cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << endl;
+                    //cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << endl;
                     //cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << endl;
 
                     // When the player clicks on a highlighted tile to move
@@ -307,13 +317,22 @@ void GameManager::Update()
 						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
 						{
 							if (selectedTile->IsOccupied())
-                            {	// Capture opponent's piece
+							{	// Capture opponent's piece
 								if (selectedTile->GetFigure()->GetColor() != _currentRound)
 									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
 							}
-							else
-								previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile,_tiles);
-
+							else // Normal move to empty tile
+							{	//previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile,_tiles);
+								if (typeid(*previousSelectedTile->GetFigure()) == typeid(Pawn))
+								{
+									Pawn* pawn = dynamic_cast<Pawn*>(previousSelectedTile->GetFigure());
+									if (pawn)
+										pawn->Move(selectedTile, previousSelectedTile, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+								}
+								else
+									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
+							}
+							
                             // Check for pawn promotion
                             if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
 							{
@@ -326,6 +345,8 @@ void GameManager::Update()
 							// Switch turns
 							_currentRound = !_currentRound;
 							previousSelectedTile = nullptr;
+							// Reset en passant flags for opponent pawns
+							ResetEnPassantFlags();
 						}
                     }
 					// When the player clicks on a figure for the first time
