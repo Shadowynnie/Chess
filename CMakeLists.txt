@@ -1,46 +1,89 @@
-﻿# CMakeList.txt : Top-level CMake project file, do global configuration
-# and include sub-projects here.
-#
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required(VERSION 3.16)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+set(CMAKE_CXX_STANDARD 17)
+
+#! ! ! ! ! ! !
+#set this to true to ship the game!
+#basically this will change the RESOURCES_PATH to be the local path
+#! ! ! ! ! ! !
+#DELETE THE OUT FOLDER AFTER CHANGING THIS BECAUSE VISUAL STUDIO DOESN'T SEEM TO RECOGNIZE THIS CHANGE AND REBUILD!
+option(PRODUCTION_BUILD "Make this a production build!" OFF)
+#DELETE THE OUT FOLDER AFTER CHANGING THIS BECAUSE VISUAL STUDIO DOESN'T SEEM TO RECOGNIZE THIS CHANGE AND REBUILD!
+
+
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE) #link time optimization
+
+# Ensure SFML is built as static libraries
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build SFML as static libraries" FORCE)
+
+#set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libs" FORCE)
+
+#add_definitions(-DSFML_STATIC)
+
+if(MSVC) 
+add_compile_options(/arch:AVX2) #make sure SIMD optimizations take place
 endif()
 
-project ("Chess")
-
-# Cesta ke knihovně SFML (relativně vůči hlavnímu CMake souboru)
-set(SFML_ROOT "${CMAKE_SOURCE_DIR}/SFML")
-
-# Přidání include a lib cest
-include_directories(${SFML_ROOT}/include)
-link_directories(${SFML_ROOT}/lib)
-
-# Global ENet configuration
-set(ENET_INCLUDE_DIR "$ENV{ENET_ROOT}/include")
-set(ENET_LIBRARY "$ENV{ENET_ROOT}/lib/enet.lib")
+project(Chess)
 
 
-# Ensure ENet paths are valid
-if(NOT EXISTS ${ENET_INCLUDE_DIR}/enet/enet.h)
-    message(FATAL_ERROR "ENet include directory not found: ${ENET_INCLUDE_DIR}")
+#Add SFML, and here you would add other libraries if needed!
+
+add_subdirectory(thirdparty/SFML)
+add_subdirectory(thirdparty/enet-1.3.18) # Networking
+
+
+# MY_SOURCES is defined to be a list of all the source files for my game 
+# DON'T ADD THE SOURCES BY HAND, they are already added with this macro
+file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
+
+add_executable("${CMAKE_PROJECT_NAME}" "${CMAKE_CURRENT_SOURCE_DIR}/src/Chess.cpp")
+
+set_property(TARGET "${CMAKE_PROJECT_NAME}" PROPERTY CXX_STANDARD 17)
+
+
+if(PRODUCTION_BUILD)
+	# setup the ASSETS_PATH macro to be in the root folder of your exe
+	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="./resources/") 
+
+	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC PRODUCTION_BUILD=1) 
+
+else()
+	# This is useful to get an ASSETS_PATH in your IDE during development
+	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
+	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC PRODUCTION_BUILD=0) 
+
 endif()
-if(NOT EXISTS ${ENET_LIBRARY})
-    message(FATAL_ERROR "ENet library not found: ${ENET_LIBRARY}")
+
+target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES} )
+
+
+if(MSVC) # If using the VS compiler...
+
+	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC _CRT_SECURE_NO_WARNINGS)
+
+
+	#YOU CAN REMOVE THE CONSOLE WITH THIS LINE! YOU CAN EVEN DO AN IF PRODUCTION_BUILD TO REMOVE IT ONLY IN PRODUCTION BUILDS
+	#set_target_properties("${CMAKE_PROJECT_NAME}" PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup") #no console
+	
+
 endif()
 
-# Add the include directory globally
-include_directories(${ENET_INCLUDE_DIR})
-
-# Make the library accessible globally for linking
-set(ENET_LIB ${ENET_LIBRARY})
-
-
-# Include sub-projects.
-add_subdirectory ("Chess")
+target_include_directories("${CMAKE_PROJECT_NAME}" PUBLIC
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/"
+	"${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/enet-1.3.18/include"
+)
 
 
-# Copy the Assets folder to the build directory
-file(COPY ${CMAKE_SOURCE_DIR}/Chess/Assets DESTINATION ${CMAKE_BINARY_DIR}/Chess)
+# Link SFML libraries statically, Here wou would add other libraries!
+target_link_libraries("${CMAKE_PROJECT_NAME}" 
+	sfml-graphics
+	sfml-window
+	sfml-system
+	sfml-audio
+	enet
+)
