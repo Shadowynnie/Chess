@@ -33,7 +33,7 @@ project(Chess)
 #Add SFML, and here you would add other libraries if needed!
 
 add_subdirectory(thirdparty/SFML)
-add_subdirectory(thirdparty/enet-1.3.18) # Networking
+add_subdirectory(thirdparty/enet) # Networking
 
 
 # MY_SOURCES is defined to be a list of all the source files for my game 
@@ -75,7 +75,7 @@ endif()
 
 target_include_directories("${CMAKE_PROJECT_NAME}" PUBLIC
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/"
-	"${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/enet-1.3.18/include"
+	"${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/enet/include"
 )
 
 
