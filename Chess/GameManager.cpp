@@ -369,9 +369,9 @@ void GameManager::PromotePawn(Figure* pawn)
 	constructors[PromotionChoice::QUEEN] = [x, y, isWhite]() { return new Queen(x, y, isWhite); };
 
 	Figure* newPiece = nullptr;
-	auto itCtor = constructors.find(choice);
-	if (itCtor != constructors.end())
-		newPiece = itCtor->second();
+	//auto itCtor = constructors[choice];
+	if (choice != PromotionChoice::QUEEN)
+		newPiece = constructors[choice]();
 	else
 		newPiece = constructors[PromotionChoice::QUEEN](); // fallback
 
