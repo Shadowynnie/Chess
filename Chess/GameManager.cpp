@@ -10,11 +10,10 @@
 #include "Figurines/Pawn.h"
 
 using std::cerr;
-using std::endl;
+
 using std::cout;
 
 /* TODO: 
-* Add option menu to choose piece type on pawn promotion
 * Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu
 * Implement networking for multiplayer mode
 * Add paused menu with options to resume, restart(singleplayer mode), leave match(multiplayer) / go to main menu
@@ -48,9 +47,7 @@ void GameManager::InitializeBoard()
 	for (int i = 0; i < 8; ++i)
 	{
 		for (int j = 0; j < 8; ++j)
-		{
 			_tiles[i][j] = Tile(i, j, false);
-		}
 	}
 
 	// Factory map for all piece types
@@ -96,7 +93,7 @@ void GameManager::InitializeBoard()
 
 	initPlayer(true);   // White
 	initPlayer(false);  // Black
-    cout << "Board initialized with pieces." << endl;
+    cout << "Board initialized with pieces.\n";
 }
 
 void GameManager::DeinitializeBoard()
@@ -107,7 +104,7 @@ void GameManager::DeinitializeBoard()
 		for (auto figure : figures)
 			delete figure;
 	}
-	cout << "Board deinitialized and memory cleaned up." << endl;
+	cout << "Board deinitialized and memory cleaned up.\n";
     _playerOneFigures.clear();
     _playerTwoFigures.clear();
 }
@@ -220,7 +217,7 @@ void GameManager::CheckForCheck()
 			if (king && king->IsThreatened(_tiles, enemyFigures))
 			{
 				kingTile->SetInCheck(true);
-				cout << (isWhiteKing ? "White" : "Black") << " King is in check!" << endl;
+				cout << (isWhiteKing ? "White" : "Black") << " King is in check!\n";
 			}
 			else
 				kingTile->SetInCheck(false);
@@ -232,11 +229,11 @@ void GameManager::CheckForCheck()
 
 void GameManager::PromotePawn(Figure* pawn)
 {
-	// Promote pawn to queen for simplicity
+	// Remove pawn from the game first
 	int x = pawn->GetX();
 	int y = pawn->GetY();
 	bool isWhite = pawn->GetColor();
-	// Remove pawn from the game
+
 	auto& playerFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
 	auto it = std::find(playerFigures.begin(), playerFigures.end(), pawn);
 	if (it != playerFigures.end())
@@ -244,12 +241,150 @@ void GameManager::PromotePawn(Figure* pawn)
 		playerFigures.erase(it);
 		delete pawn;
 	}
-    // Add a visual menu to choose piece type in future
-	// Create new queen
-	Queen* newQueen = new Queen(x, y, isWhite);
-	playerFigures.push_back(newQueen);
-	_tiles[x][y].SetFigure(newQueen);
-	cout << (isWhite ? "White" : "Black") << " Pawn promoted to Queen at (" << x << ", " << y << ")" << endl;
+	_tiles[x][y].SetFigure(nullptr); // clear tile occupant while choosing
+
+	// Prepare promotion menu visuals
+	const float itemSize = 128.f;
+	const float padding = 10.f;
+	const float menuWidth = itemSize + padding * 2.f;
+	const float menuHeight = itemSize * 4.f + padding * 5.f;
+
+	sf::Vector2u winSize = _window.getSize();
+	float menuX = (float(winSize.x) - menuWidth) / 2.f;
+	float menuY = (float(winSize.y) - menuHeight) / 2.f;
+
+	sf::RectangleShape promoBackg(sf::Vector2f(menuWidth, menuHeight));
+	promoBackg.setPosition(sf::Vector2f(menuX, menuY));
+	promoBackg.setFillColor(sf::Color(30, 30, 30, 220));
+	promoBackg.setOutlineColor(sf::Color::White);
+	promoBackg.setOutlineThickness(3.f);
+
+	// Load sprites for the 4 promotion choices (color specific)
+	std::string suffix = isWhite ? "white" : "black";
+	sf::Sprite rookSprite = AssetManager::GetSprite("rook_" + suffix);
+	sf::Sprite knightSprite = AssetManager::GetSprite("knight_" + suffix);
+	sf::Sprite bishopSprite = AssetManager::GetSprite("bishop_" + suffix);
+	sf::Sprite queenSprite = AssetManager::GetSprite("queen_" + suffix);
+
+	// Make sprites a bit larger for the menu (AssetManager already scales to 0.5),
+	// adjust scale to visually fit the itemSize while keeping aspect ratio.
+	auto fitSprite = [&](sf::Sprite& s, float targetSize)
+	{
+		sf::FloatRect bounds = s.getLocalBounds();
+		float maxSide = std::max(bounds.size.x, bounds.size.y);
+		if (maxSide <= 0.f) return;
+		float scale = (targetSize - 24.f) / maxSide; // small margin
+		s.setScale(sf::Vector2f(scale, scale));
+	};
+
+	fitSprite(rookSprite, itemSize);
+	fitSprite(knightSprite, itemSize);
+	fitSprite(bishopSprite, itemSize);
+	fitSprite(queenSprite, itemSize);
+
+	// Position sprites vertically inside the menu with padding
+	std::array<sf::Sprite*, 4> items = { &rookSprite, &knightSprite, &bishopSprite, &queenSprite };
+	for (size_t i = 0; i < items.size(); ++i)
+	{
+		float itemX = menuX + (menuWidth - items[i]->getGlobalBounds().size.x) / 2.f;
+		float itemY = menuY + padding + i * (itemSize + padding) + (itemSize - items[i]->getGlobalBounds().size.y) / 2.f;
+		items[i]->setPosition(sf::Vector2f(itemX, itemY));
+	}
+
+	// Map each sprite to its promotion choice (eliminates if/else chain)
+	enum class PromotionChoice { ROOK, KNIGHT, BISHOP, QUEEN };
+	std::map<sf::Sprite*, PromotionChoice> itemChoices
+	{
+		{&rookSprite, PromotionChoice::ROOK},
+		{&knightSprite, PromotionChoice::KNIGHT},
+		{&bishopSprite, PromotionChoice::BISHOP},
+		{&queenSprite, PromotionChoice::QUEEN}
+	};
+
+	// Modal loop: block until player selects a promotion or window closed
+	bool chosen = false;
+	PromotionChoice choice = PromotionChoice::QUEEN; // default
+
+	while (_window.isOpen() && !chosen)
+	{
+		std::optional<sf::Event> event;
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				DeinitializeBoard();
+				_window.close();
+				return;
+			}
+			if (event->is<sf::Event::MouseButtonPressed>() && (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				// Use the mapping to detect which sprite was clicked
+				for (auto& pair : itemChoices)
+				{
+					if (pair.first->getGlobalBounds().contains(mfp))
+					{
+						choice = pair.second;
+						chosen = true;
+						break;
+					}
+				}
+			}
+			// allow cancel/back to default queen on Esc
+			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			{
+				choice = PromotionChoice::QUEEN;
+				chosen = true;
+			}
+		}
+
+		// Draw current board underneath and overlay the modal
+		_window.clear();
+		DrawGame();
+		_window.draw(promoBackg);
+		// draw each item with a thin border highlight
+		for (size_t i = 0; i < items.size(); ++i)
+		{
+			// item background box
+			sf::RectangleShape itemBg(sf::Vector2f(itemSize, itemSize));
+			float bx = menuX + padding;
+			float by = menuY + padding + i * (itemSize + padding);
+			itemBg.setPosition(sf::Vector2f(bx, by));
+			itemBg.setFillColor(sf::Color(200, 200, 200, 20));
+			itemBg.setOutlineColor(sf::Color(150, 150, 150, 200));
+			itemBg.setOutlineThickness(1.f);
+			_window.draw(itemBg);
+
+			_window.draw(*items[i]);
+		}
+		_window.display();
+	}
+
+	// Map for creating the chosen piece (replaces switch)
+	std::map<PromotionChoice, std::function<Figure* ()>> constructors;
+	constructors[PromotionChoice::ROOK] = [x, y, isWhite]() { return new Rook(x, y, isWhite); };
+	constructors[PromotionChoice::KNIGHT] = [x, y, isWhite]() { return new Knight(x, y, isWhite); };
+	constructors[PromotionChoice::BISHOP] = [x, y, isWhite]() { return new Bishop(x, y, isWhite); };
+	constructors[PromotionChoice::QUEEN] = [x, y, isWhite]() { return new Queen(x, y, isWhite); };
+
+	Figure* newPiece = nullptr;
+	auto itCtor = constructors.find(choice);
+	if (itCtor != constructors.end())
+		newPiece = itCtor->second();
+	else
+		newPiece = constructors[PromotionChoice::QUEEN](); // fallback
+
+	if (newPiece)
+	{
+		playerFigures.push_back(newPiece);
+		_tiles[x][y].SetFigure(newPiece);
+		cout << (isWhite ? "White" : "Black") << " Pawn promoted to "
+			<< (typeid(*newPiece) == typeid(Rook) ? "Rook" :
+				typeid(*newPiece) == typeid(Knight) ? "Knight" :
+				typeid(*newPiece) == typeid(Bishop) ? "Bishop" : "Queen")
+			<< " at (" << x << ", " << y << ")\n";
+	}
 }
 
 void GameManager::ResetEnPassantFlags()
@@ -282,6 +417,7 @@ void GameManager::Update()
 			{
                 DeinitializeBoard();
 				_window.close();
+				return;
 			}
 			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 			{
@@ -294,25 +430,25 @@ void GameManager::Update()
                 int tileX = mousePos.x / 128;
                 int tileY = mousePos.y / 128;
 
-                cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << endl;
+				cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << "\n";
 
 				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
 				{
 					selectedTile = &_tiles[tileX][tileY];
 
                     // Debug information
-                    cout << "-------------------------" << endl;
-                    cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << endl;
-                    cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << endl;
-					//cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes" : " No") << endl;
-					//cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes" : " No") << endl;
-                    cout << "Current round (true=white, false=black): " << (_currentRound ? "White" : "Black") << endl;
-                    //cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes" : " No") << endl;
-					//cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White" : "Black") : "N/A") << endl;
-                    //cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << endl;
-                    //cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes" : " No") << endl;
-                    //cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << endl;
-                    //cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << endl;
+                    cout << "-------------------------\n";
+                    cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << "\n";
+                    cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << "\n";
+					//cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes\n" : " No\n");
+					//cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes\n" : " No\n");
+                    cout << "Current round (true=white, false=black): " << (_currentRound ? "White\n" : "Black\n");
+                    //cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes\n" : " No\n");
+					//cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White\n" : "Black\n") : "N/A\n");
+                    //cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << "\n";
+                    //cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes\n" : " No\n");
+                    //cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
+                    //cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << "\n"
 
                     // When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
@@ -408,25 +544,25 @@ void GameManager::MainMenu()
 				mousePos = sf::Mouse::getPosition(_window);
 				if (singleplayerButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
-					cout << "Single player -> player vs computer." << endl;
+					cout << "Single player -> player vs computer.\n";
 					// Transition to singleplayer game state
                     _currentState = GameState::SINGLEPLAYER;
 				}
 				if (hostButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
-					cout << "Host Game button clicked!" << endl;
+					cout << "Host Game button clicked!\n";
 					// Transition to host game state
                     _currentState = GameState::HOST_GAME;
 				}
 				else if (joinButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
-					cout << "Join Game button clicked!" << endl;
+					cout << "Join Game button clicked!\n";
 					// Transition to join game state
                     _currentState = GameState::CONNECT_TO_GAME;
 				}
 				else if (quitButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
-					cout << "Quit button clicked!" << endl;
+					cout << "Quit button clicked!\n";
 					// Transition to closed state
                     _currentState = GameState::CLOSED;
 				}
@@ -445,19 +581,19 @@ void GameManager::MainMenu()
 
 void GameManager::HostGame()
 {
-	cout << "Hosting a Game..." << endl;
+	cout << "Hosting a Game...\n";
 	// Placeholder for hosting game logic
 }
 
 void GameManager::ConnectToGame()
 {
-	cout << "Connecting to a Game..." << endl;
+	cout << "Connecting to a Game...\n";
 	// Placeholder for connecting to game logic
 }
 
 void GameManager::PlayGame()
 {
-	cout << "Starting the Game..." << endl;
+	cout << "Starting the Game...\n";
 	// Placeholder for game loop logic
 	InitializeBoard();
     Update();

@@ -30,12 +30,10 @@ void AssetManager::LoadTextures()
 	{
 		sf::Texture tex;
 		if (!tex.loadFromFile(path))
-		{
-			cerr << "Failed to load " << path << endl;
-		}
+			cerr << "Failed to load " << path << "\n";
 		else
 		{
-			cout << "Loaded " << path << endl;
+			cout << "Loaded " << path << "\n";
 			tex.setSmooth(true);
 			_textures[key] = tex;
 		}
