@@ -10,10 +10,9 @@
 #include "Figurines/Pawn.h"
 
 using std::cerr;
-
 using std::cout;
 
-/* TODO: 
+/* TODO:
 * Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu
 * Implement networking for multiplayer mode
 * Add paused menu with options to resume, restart(singleplayer mode), leave match(multiplayer) / go to main menu
@@ -36,9 +35,170 @@ map<GameState, function<void()>> stateFunctions
 	{ GameState::HOST_GAME, []() { GameManager::HostGame(); }},
 	{ GameState::CONNECT_TO_GAME, []() { GameManager::ConnectToGame(); }},
 	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(); }},
-	{ GameState::GAME_OVER, []() { GameManager::DeinitializeBoard(); }},
+	{ GameState::GAME_OVER, []() { GameManager::DeinitializeBoard(); }}, // Start GameOver menu here
 	{ GameState::CLOSED, [&]() { _window.close(); } }
 };
+
+// Returns whether the given side's king is currently in check.
+bool GameManager::IsKingInCheck(bool isWhite)
+{
+	auto& friendlyFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
+	auto& enemyFigures = isWhite ? _playerTwoFigures : _playerOneFigures;
+
+	King* king = nullptr;
+	for (auto fig : friendlyFigures)
+	{
+		if (typeid(*fig) == typeid(King))
+		{
+			king = dynamic_cast<King*>(fig);
+			break;
+		}
+	}
+	if (!king)
+		return false; // no king found (shouldn't happen in normal play)
+
+	return king->IsThreatened(_tiles, enemyFigures);
+}
+
+// Return true if the given side (isWhite) has at least one legal move.
+// A legal move is any move the side can make that does not leave its own king in check.
+// We simulate each candidate move, temporarily updating tiles and piece positions, and test king safety.
+// This intentionally keeps changes local (we revert them after the test).
+bool GameManager::HasAnyLegalMoves(bool isWhite)
+{
+	auto& friendlyFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
+	auto& enemyFigures = isWhite ? _playerTwoFigures : _playerOneFigures;
+
+	for (auto fig : friendlyFigures)
+	{
+		// Obtain candidate moves.
+		vector<Tile*> candidateMoves;
+		if (typeid(*fig) == typeid(King))
+			candidateMoves = fig->GetPossibleMoves(_tiles, enemyFigures); // king-aware moves
+		else
+			candidateMoves = fig->GetPossibleMoves(_tiles);
+
+		if (candidateMoves.empty())
+			continue;
+
+		// For each candidate, simulate and test whether king is safe after the move
+		for (auto targetTile : candidateMoves)
+		{
+			Tile* sourceTile = fig->GetCurrentTile(_tiles);
+			if (!sourceTile) continue;
+
+			Figure* captured = targetTile->GetFigure();
+			int oldX = fig->GetX();
+			int oldY = fig->GetY();
+
+			// Apply the move on the board (temporary)
+			sourceTile->SetFigure(nullptr);
+			targetTile->SetFigure(fig);
+			fig->setPosition(targetTile->GetX(), targetTile->GetY());
+
+			// Build local enemy list that reflects captured piece removal (if any)
+			vector<Figure*> localEnemies = enemyFigures;
+			if (captured)
+			{
+				auto it = std::find(localEnemies.begin(), localEnemies.end(), captured);
+				if (it != localEnemies.end())
+					localEnemies.erase(it);
+			}
+
+			// Find this side's king (might be f itself if king moved)
+			King* king = nullptr;
+			if (typeid(*fig) == typeid(King))
+				king = dynamic_cast<King*>(fig);
+			else
+			{
+				for (auto friendFig : friendlyFigures)
+				{
+					if (typeid(*friendFig) == typeid(King))
+					{
+						king = dynamic_cast<King*>(friendFig);
+						break;
+					}
+				}
+			}
+
+			bool kingInCheck = false;
+			if (king)
+				kingInCheck = king->IsThreatened(_tiles, localEnemies);
+
+			// Revert the move
+			sourceTile->SetFigure(fig);
+			targetTile->SetFigure(captured);
+			fig->setPosition(oldX, oldY);
+
+			// If king is safe after this move => we have at least one legal move
+			if (!kingInCheck)
+				return true;
+		}
+	}
+	// No legal moves found
+	return false;
+}
+
+// Return true when both sides have only their kings remaining (insufficient material)
+bool GameManager::OnlyKingsLeft()
+{
+	auto countNonKings = [](const vector<Figure*>& figures)
+	{
+		int count = 0;
+		for (auto fig : figures)
+		{
+			if (typeid(*fig) != typeid(King))
+				++count;
+		}
+		return count;
+	};
+
+	return (countNonKings(_playerOneFigures) == 0) && (countNonKings(_playerTwoFigures) == 0);
+}
+
+// Evaluate endgame after a move. Prints result to console.
+// Returns true if the game ended (caller may choose to stop the game loop).
+bool GameManager::EvaluateEndGame()
+{
+	// Insufficient material (only kings)
+	if (OnlyKingsLeft())
+	{
+		cout << "Game ended: Draw (Only kings remain).\n";
+		_currentState = GameState::GAME_OVER;
+		stateFunctions[_currentState]();
+		return true;
+	}
+
+	// Side to move
+	bool toMoveIsWhite = _currentRound;
+
+	// Check whether side to move is in check
+	bool inCheck = IsKingInCheck(toMoveIsWhite);
+	bool hasMoves = HasAnyLegalMoves(toMoveIsWhite);
+
+	if (!hasMoves)
+	{
+		if (inCheck)
+		{
+			// Checkmate -> the side who just moved wins (opposite of toMove)
+			cout << "Checkmate! " << (toMoveIsWhite ? "Black" : "White") << " wins.\n";
+			_currentState = GameState::GAME_OVER;
+			stateFunctions[_currentState]();
+			return true;
+		}
+		else
+		{
+			// Stalemate -> draw
+			cout << "Stalemate! Draw.\n";
+			_currentState = GameState::GAME_OVER;
+			stateFunctions[_currentState]();
+			return true;
+		}
+	}
+
+	// No game end
+	return false;
+}
 
 // Initialize the chessboard with tiles and figures for both players
 void GameManager::InitializeBoard()
@@ -51,7 +211,8 @@ void GameManager::InitializeBoard()
 	}
 
 	// Factory map for all piece types
-	map<PieceType, function<Figure* (int, int, bool)>> factories = {
+	map<PieceType, function<Figure* (int, int, bool)>> factories = 
+	{
 		{ PieceType::ROOK,   [](int x,int y,bool w) { return new Rook(x,y,w); } },
 		{ PieceType::KNIGHT, [](int x,int y,bool w) { return new Knight(x,y,w); } },
 		{ PieceType::BISHOP, [](int x,int y,bool w) { return new Bishop(x,y,w); } },
@@ -61,7 +222,8 @@ void GameManager::InitializeBoard()
 	};
 
 	// Back rank layout
-	std::array<PieceType, 8> backRank = {
+	std::array<PieceType, 8> backRank = 
+	{
 		PieceType::ROOK, PieceType::KNIGHT, PieceType::BISHOP, PieceType::QUEEN,
 		PieceType::KING, PieceType::BISHOP, PieceType::KNIGHT, PieceType::ROOK
 	};
@@ -81,19 +243,19 @@ void GameManager::InitializeBoard()
 			Figure* fig = factories[type](file, backRankRow, isWhite);
 			figures.push_back(fig);
 			_tiles[file][backRankRow].SetFigure(fig);
-        }
+		}
 		// Pawns
 		for (int file = 0; file < 8; ++file)
 		{
 			Figure* fig = factories[PieceType::PAWN](file, pawnRow, isWhite);
 			figures.push_back(fig);
 			_tiles[file][pawnRow].SetFigure(fig);
-        }
+		}
 	};
 
 	initPlayer(true);   // White
 	initPlayer(false);  // Black
-    cout << "Board initialized with pieces.\n";
+	cout << "Board initialized with pieces.\n";
 }
 
 void GameManager::DeinitializeBoard()
@@ -105,8 +267,8 @@ void GameManager::DeinitializeBoard()
 			delete figure;
 	}
 	cout << "Board deinitialized and memory cleaned up.\n";
-    _playerOneFigures.clear();
-    _playerTwoFigures.clear();
+	_playerOneFigures.clear();
+	_playerTwoFigures.clear();
 }
 
 // Drawing function definitions
@@ -119,7 +281,7 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 		{
 			Tile& tile = tiles[i][j];
 
-            // if the tile is not in check, use standard colors
+			// if the tile is not in check, use standard colors
 			if (!tile.IsInCheck())
 			{
 				tile.TileShape.setFillColor((i + j) % 2 == 0
@@ -224,7 +386,7 @@ void GameManager::CheckForCheck()
 		}
 	};
 	checkKing(true);  // Check white king
-    checkKing(false); // Check black king
+	checkKing(false); // Check black king
 }
 
 void GameManager::PromotePawn(Figure* pawn)
@@ -398,37 +560,37 @@ void GameManager::ResetEnPassantFlags()
 	}
 }
 
-void GameManager::Update() 
+void GameManager::Update()
 {
 	std::optional<sf::Event> event;
 	sf::Vector2i mousePos;
 	Tile* selectedTile = nullptr;
-    Tile* previousSelectedTile = nullptr;
+	Tile* previousSelectedTile = nullptr;
 
-    // GAME LOOP
+	// GAME LOOP
 	while (_window.isOpen())
 	{
-		_window.clear();        
-        DrawGame();
-        // Handle input events
+		_window.clear();
+		DrawGame();
+		// Handle input events
 		while (event = _window.pollEvent())
 		{
 			if (event->is<sf::Event::Closed>())
 			{
-                DeinitializeBoard();
+				DeinitializeBoard();
 				_window.close();
 				return;
 			}
 			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 			{
 				_currentState = GameState::MAIN_MENU;
-                stateFunctions[_currentState]();
+				stateFunctions[_currentState]();
 			}
 			if (event->is<sf::Event::MouseButtonPressed>() && (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
 				mousePos = sf::Mouse::getPosition(_window);
-                int tileX = mousePos.x / 128;
-                int tileY = mousePos.y / 128;
+				int tileX = mousePos.x / 128;
+				int tileY = mousePos.y / 128;
 
 				cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << "\n";
 
@@ -436,24 +598,24 @@ void GameManager::Update()
 				{
 					selectedTile = &_tiles[tileX][tileY];
 
-                    // Debug information
-                    cout << "-------------------------\n";
-                    cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << "\n";
-                    cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes" : " No") << "\n";
+					// Debug information
+					cout << "-------------------------\n";
+					cout << "Selected Tile - X: " << selectedTile->GetX() << " Y: " << selectedTile->GetY() << "\n";
+					cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes\n" : " No\n");
 					//cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes\n" : " No\n");
 					//cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes\n" : " No\n");
-                    cout << "Current round (true=white, false=black): " << (_currentRound ? "White\n" : "Black\n");
-                    //cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes\n" : " No\n");
+					cout << "Current round (true=white, false=black): " << (_currentRound ? "White\n" : "Black\n");
+					//cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes\n" : " No\n");
 					//cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White\n" : "Black\n") : "N/A\n");
-                    //cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << "\n";
-                    //cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes\n" : " No\n");
-                    //cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
-                    //cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << "\n"
+					//cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << "\n";
+					//cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes\n" : " No\n");
+					//cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
+					//cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << "\n"
 
-                    // When the player clicks on a highlighted tile to move
+					// When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
 					{
-                        // Move the figure to the selected tile
+						// Move the figure to the selected tile
 						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
 						{
 							if (selectedTile->IsOccupied())
@@ -472,14 +634,14 @@ void GameManager::Update()
 								else
 									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
 							}
-							
-                            // Check for pawn promotion
-                            if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
+
+							// Check for pawn promotion
+							if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
 							{
 								Pawn* pawn = dynamic_cast<Pawn*>(selectedTile->GetFigure());
 								if (pawn && pawn->CanPromote())
 									PromotePawn(pawn);
-                            }
+							}
 
 							ClearHighlitghts();
 							// Switch turns
@@ -487,8 +649,17 @@ void GameManager::Update()
 							previousSelectedTile = nullptr;
 							// Reset en passant flags for opponent pawns
 							ResetEnPassantFlags();
+
+							// Evaluate endgame conditions after the move
+							if (EvaluateEndGame())
+							{
+								// If the game ended, close the window for now (we already deinitialized the board)
+								// TODO: Add some EndGame menu function to give the option to play again or go to the main menu
+								_window.close();
+								return;
+							}
 						}
-                    }
+					}
 					// When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
@@ -496,17 +667,17 @@ void GameManager::Update()
 						if (typeid(*selectedTile->GetFigure()) == typeid(King))
 						{
 							auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
-                            possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
 						}
 						else
 							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
-                        
-                        ClearHighlitghts();
-                        selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
+
+						ClearHighlitghts();
+						selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
 						previousSelectedTile = selectedTile;
 					}
 					CheckForCheck();
-                }
+				}
 			}
 		}
 		_window.display();
@@ -516,9 +687,9 @@ void GameManager::Update()
 void GameManager::MainMenu()
 {
 	_window.setVerticalSyncEnabled(true);
-    // Buttons
-    sf::Sprite singleplayerButton = AssetManager::GetSprite("menu_singleplayer");
-    singleplayerButton.setPosition(sf::Vector2f(362.f, 150.f));
+	// Buttons
+	sf::Sprite singleplayerButton = AssetManager::GetSprite("menu_singleplayer");
+	singleplayerButton.setPosition(sf::Vector2f(362.f, 150.f));
 	sf::Sprite hostButton = AssetManager::GetSprite("menu_host");
 	hostButton.setPosition(sf::Vector2f(362.f, 300.f));
 	sf::Sprite joinButton = AssetManager::GetSprite("menu_join");
@@ -532,7 +703,7 @@ void GameManager::MainMenu()
 	// MAIN MENU LOOP
 	while (_window.isOpen())
 	{
-		
+
 		while (event = _window.pollEvent())
 		{
 			if (event->is<sf::Event::Closed>())
@@ -546,32 +717,32 @@ void GameManager::MainMenu()
 				{
 					cout << "Single player -> player vs computer.\n";
 					// Transition to singleplayer game state
-                    _currentState = GameState::SINGLEPLAYER;
+					_currentState = GameState::SINGLEPLAYER;
 				}
 				if (hostButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
 					cout << "Host Game button clicked!\n";
 					// Transition to host game state
-                    _currentState = GameState::HOST_GAME;
+					_currentState = GameState::HOST_GAME;
 				}
 				else if (joinButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
 					cout << "Join Game button clicked!\n";
 					// Transition to join game state
-                    _currentState = GameState::CONNECT_TO_GAME;
+					_currentState = GameState::CONNECT_TO_GAME;
 				}
 				else if (quitButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
 				{
 					cout << "Quit button clicked!\n";
 					// Transition to closed state
-                    _currentState = GameState::CLOSED;
+					_currentState = GameState::CLOSED;
 				}
-                // Switch to the selected state and execute its function
-                stateFunctions[_currentState]();
+				// Switch to the selected state and execute its function
+				stateFunctions[_currentState]();
 			}
 		}
 		_window.clear();
-        _window.draw(singleplayerButton);
+		_window.draw(singleplayerButton);
 		_window.draw(hostButton);
 		_window.draw(joinButton);
 		_window.draw(quitButton);
@@ -596,5 +767,5 @@ void GameManager::PlayGame()
 	cout << "Starting the Game...\n";
 	// Placeholder for game loop logic
 	InitializeBoard();
-    Update();
+	Update();
 }

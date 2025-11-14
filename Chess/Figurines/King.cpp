@@ -1,3 +1,4 @@
+
 #include "King.h"
 #include "Rook.h"
 
@@ -39,16 +40,20 @@ bool King::CanCastle(Tile tiles[8][8], vector<Figure*>& enemyFigures, int rookX,
 	}
 
 	// Check if any of the king’s path squares are threatened
-	for (int x = X; x != targetKingX + step; x += step)
+	int originalX = X;
+	int originalY = Y;
+	for (int xx = X; xx != targetKingX + step; xx += step)
 	{
-		X = x; Y = row;
+		X = xx; Y = row;
 		if (IsThreatened(tiles, enemyFigures))
 		{
-			X = 4; Y = row; // restore
+			// restore original coordinates
+			X = originalX; Y = originalY;
 			return false;
 		}
 	}
-	X = 4; Y = row; // restore
+	// restore original coordinates
+	X = originalX; Y = originalY;
 
 	return true;
 }
@@ -56,7 +61,7 @@ bool King::CanCastle(Tile tiles[8][8], vector<Figure*>& enemyFigures, int rookX,
 vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFigures)
 {
 	vector<Tile*> possibleMoves;
-	int kingMoves[8][2] = 
+	int kingMoves[8][2] =
 	{
 		{1, 0}, {-1, 0}, {0, 1}, {0, -1},
 		{1, 1}, {1, -1}, {-1, 1}, {-1, -1}
@@ -71,35 +76,37 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFig
 
 		Tile* target = &tiles[newX][newY];
 
-        // King can move to an unoccupied tile or capture an enemy piece
+		// King can move to an unoccupied tile or capture an enemy piece
 		if (!target->IsOccupied() ||
 			(target->GetFigure() &&
-			target->GetFigure()->GetColor() != IsWhite))
+				target->GetFigure()->GetColor() != IsWhite))
 		{
-            // Simulating a move to check for threats
+			// Simulating a move to check for threats
 			int oldX = X;
 			int oldY = Y;
 			Figure* captured = target->GetFigure();
 
-            // Temporarily move the king
+			// Temporarily move the king on the board: clear old tile, set target
+			tiles[oldX][oldY].SetFigure(nullptr);
 			X = newX;
 			Y = newY;
 			target->SetFigure(this);
 
 			bool threatened = IsThreatened(tiles, enemyFigures);
 
-            // Return to original position
+			// Return to original position and restore board occupancy
+			target->SetFigure(captured);
 			X = oldX;
 			Y = oldY;
-			target->SetFigure(captured);
+			tiles[oldX][oldY].SetFigure(this);
 
-            // If not threatened, add to possible moves
+			// If not threatened, add to possible moves
 			if (!threatened)
 				possibleMoves.push_back(target);
 		}
 	}
 	// --- Castling check ---
-    if (!_hasMoved) // King has not moved yet
+	if (!_hasMoved) // King has not moved yet
 	{
 		int row = IsWhite ? 0 : 7;
 
@@ -118,7 +125,7 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 {
 	vector<Tile*> possibleMoves;
 	// King moves one square in any direction
-	int kingMoves[8][2] = 
+	int kingMoves[8][2] =
 	{
 		{1, 0}, {-1, 0}, {0, 1}, {0, -1},
 		{1, 1}, {1, -1}, {-1, 1}, {-1, -1}
@@ -131,8 +138,8 @@ vector<Tile*> King::GetPossibleMoves(Tile tiles[8][8])
 		{
 			if (!tiles[newX][newY].IsOccupied() ||
 				(tiles[newX][newY].IsOccupied() &&
-				 (tiles[newX][newY].GetFigure() != nullptr && 
-				  tiles[newX][newY].GetFigure()->GetColor() != IsWhite)))
+					(tiles[newX][newY].GetFigure() != nullptr &&
+						tiles[newX][newY].GetFigure()->GetColor() != IsWhite)))
 			{
 				possibleMoves.push_back(&tiles[newX][newY]);
 			}
@@ -152,33 +159,33 @@ void King::Move(Tile* tile, Tile* previousTile, Tile tiles[8][8])
 
 	int deltaX = X - oldX;
 	int row = IsWhite ? 0 : 7;
-    int col = oldY;
+	int col = oldY;
 
-    // If the king moved two squares horizontally, it's a castling move
+	// If the king moved two squares horizontally, it's a castling move
 	if (std::abs(deltaX) == 2)
 	{
 		Tile* rookTile;
-        Figure* rookFigure;
+		Figure* rookFigure;
 		Rook* rook;
 		if (deltaX > 0)
 		{
 			col = 7;
 			rookTile = &tiles[col][row];
-			col = 5;				
+			col = 5;
 		}
 		else
 		{
 			// Long castling (queenside)
-            col = 0;
+			col = 0;
 			rookTile = &tiles[col][row];
-            col = 3;
+			col = 3;
 		}
 		rookFigure = rookTile->GetFigure();
 		rook = dynamic_cast<Rook*>(rookFigure);
 		if (rook && !rook->HasMoved() && !_hasMoved)
 			rookFigure->Move(&tiles[col][row], rookTile, tiles);
 	}
-    _hasMoved = true;
+	_hasMoved = true;
 }
 
 bool King::IsThreatened(Tile tiles[8][8], vector<Figure*>& enemyFigures)
