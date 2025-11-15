@@ -5,23 +5,24 @@ map<string, sf::Texture> AssetManager::_textures;
 
 map<string, string> AssetManager::_fileNames = {
     // Load chess piece assets
-	{ "pawn_white",   "Assets/pawn_white.png" },
-	{ "rook_white",   "Assets/rook_white.png" },
-	{ "knight_white", "Assets/knight_white.png" },
-	{ "bishop_white", "Assets/bishop_white.png" },
-	{ "queen_white",  "Assets/queen_white.png" },
-	{ "king_white",   "Assets/king_white.png" },
-	{ "pawn_black",   "Assets/pawn_black.png" },
-	{ "rook_black",   "Assets/rook_black.png" },
-	{ "knight_black", "Assets/knight_black.png" },
-	{ "bishop_black", "Assets/bishop_black.png" },
-	{ "queen_black",  "Assets/queen_black.png" },
-	{ "king_black",   "Assets/king_black.png" },
+	{ "pawn_white",   "Assets/Figurines/pawn_white.png" },
+	{ "rook_white",   "Assets/Figurines/rook_white.png" },
+	{ "knight_white", "Assets/Figurines/knight_white.png" },
+	{ "bishop_white", "Assets/Figurines/bishop_white.png" },
+	{ "queen_white",  "Assets/Figurines/queen_white.png" },
+	{ "king_white",   "Assets/Figurines/king_white.png" },
+	{ "pawn_black",   "Assets/Figurines/pawn_black.png" },
+	{ "rook_black",   "Assets/Figurines/rook_black.png" },
+	{ "knight_black", "Assets/Figurines/knight_black.png" },
+	{ "bishop_black", "Assets/Figurines/bishop_black.png" },
+	{ "queen_black",  "Assets/Figurines/queen_black.png" },
+	{ "king_black",   "Assets/Figurines/king_black.png" },
 	// Load Main Menu assets
-	{ "menu_host", "Assets/MenuHostGame.png" },
-	{ "menu_join", "Assets/MenuJoinGame.png" },
-    { "menu_quit", "Assets/MenuQuit.png" },
-	{ "menu_singleplayer", "Assets/MenuSingleplayer.png" }
+	// TODO: Replace menu these items by drawable strings using SFML functions
+	{ "menu_host", "Assets/MenuItems/MainMenu/menu_host_game.png" },
+	{ "menu_join", "Assets/MenuItems/MainMenu/menu_join_game.png" },
+    { "menu_quit", "Assets/MenuItems/MainMenu/menu_quit.png" },
+	{ "menu_singleplayer", "Assets/MenuItems/MainMenu/menu_singleplayer.png" },
 };
 
 void AssetManager::LoadTextures() 

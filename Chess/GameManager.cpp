@@ -15,6 +15,7 @@ using std::cout;
 /* TODO:
 * Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu
 * Implement networking for multiplayer mode
+* Replace menu items by drawable strings using SFML functions (use png assets for figures only)
 * Add paused menu with options to resume, restart(singleplayer mode), leave match(multiplayer) / go to main menu
 * Add configuration menu to set network settings, sound settings, etc.
 * Add AI player bot for singleplayer mode
@@ -23,6 +24,7 @@ using std::cout;
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
+GameResult _gameResult;
 static Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
 static vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces (WHITE)
 static vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces (BLACK)
@@ -35,7 +37,7 @@ map<GameState, function<void()>> stateFunctions
 	{ GameState::HOST_GAME, []() { GameManager::HostGame(); }},
 	{ GameState::CONNECT_TO_GAME, []() { GameManager::ConnectToGame(); }},
 	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(); }},
-	{ GameState::GAME_OVER, []() { GameManager::DeinitializeBoard(); }}, // Start GameOver menu here
+	{ GameState::GAME_OVER, []() { GameManager::EndGameMenu(); }}, // Start GameOver menu here
 	{ GameState::CLOSED, [&]() { _window.close(); } }
 };
 
@@ -182,6 +184,7 @@ bool GameManager::EvaluateEndGame()
 		{
 			// Checkmate -> the side who just moved wins (opposite of toMove)
 			cout << "Checkmate! " << (toMoveIsWhite ? "Black" : "White") << " wins.\n";
+			_gameResult = (toMoveIsWhite ? GameResult::BLACK_WINS : GameResult::WHITE_WINS);
 			_currentState = GameState::GAME_OVER;
 			stateFunctions[_currentState]();
 			return true;
@@ -190,6 +193,7 @@ bool GameManager::EvaluateEndGame()
 		{
 			// Stalemate -> draw
 			cout << "Stalemate! Draw.\n";
+			_gameResult = GameResult::DRAW;
 			_currentState = GameState::GAME_OVER;
 			stateFunctions[_currentState]();
 			return true;
@@ -455,7 +459,7 @@ void GameManager::PromotePawn(Figure* pawn)
 
 	// Map each sprite to its promotion choice (eliminates if/else chain)
 	enum class PromotionChoice { ROOK, KNIGHT, BISHOP, QUEEN };
-	std::map<sf::Sprite*, PromotionChoice> itemChoices
+	map<sf::Sprite*, PromotionChoice> itemChoices
 	{
 		{&rookSprite, PromotionChoice::ROOK},
 		{&knightSprite, PromotionChoice::KNIGHT},
@@ -746,6 +750,161 @@ void GameManager::MainMenu()
 		_window.draw(hostButton);
 		_window.draw(joinButton);
 		_window.draw(quitButton);
+		_window.display();
+	}
+}
+
+void GameManager::EndGameMenu()
+{
+	// Frame / modal layout (similar style to PromotePawn)
+	const float itemSize = 180.f;
+	const float padding = 40.f;
+	const float menuWidth = (itemSize * 2.f) + padding * 3.f; // two buttons + paddings
+	const float menuHeight = itemSize + padding * 4.f;        // label + buttons area
+
+	sf::Vector2u winSize = _window.getSize();
+	float menuX = (float(winSize.x) - menuWidth) / 2.f;
+	float menuY = (float(winSize.y) - menuHeight) / 2.f;
+
+	sf::RectangleShape backg(sf::Vector2f(menuWidth, menuHeight));
+	backg.setPosition(sf::Vector2f(menuX, menuY));
+	backg.setFillColor(sf::Color(30, 30, 30, 230));
+	backg.setOutlineColor(sf::Color::White);
+	backg.setOutlineThickness(3.f);
+
+	// Load Arial font (try common locations)
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	// Load the font or try alternative path relative to exe
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font from: " << fontPath << "\n";
+
+	// Endgame label based on _gameResult
+	string labelStr;
+
+	if (_gameResult == GameResult::WHITE_WINS)
+		labelStr = "White Wins!";
+	else if (_gameResult == GameResult::BLACK_WINS)
+		labelStr = "Black Wins!";
+	else
+		labelStr = "Draw";
+
+	sf::Text label(font);
+	label.setString(labelStr);
+	label.setCharacterSize(34u);
+	label.setFillColor(sf::Color::White);
+	label.setStyle(sf::Text::Bold);
+
+	// center label horizontally in frame
+	sf::FloatRect lblBounds = label.getLocalBounds();
+	label.setPosition(sf::Vector2f(
+		menuX + (menuWidth - lblBounds.position.x) / 2.f - lblBounds.size.x,
+		menuY + padding
+	));
+
+	// Button texts
+	sf::Text backTxt(font);
+	backTxt.setString("BACK TO \nMAIN MENU");
+	backTxt.setCharacterSize(20u);
+	backTxt.setFillColor(sf::Color::White);
+
+	sf::Text retryTxt(font);
+	retryTxt.setString("RETRY MATCH");
+	retryTxt.setCharacterSize(20u);
+	retryTxt.setFillColor(sf::Color::White);
+
+	// Button background rectangles
+	float btnW = itemSize;
+	float btnH = itemSize * 0.5f;
+	float btnY = menuY + padding + lblBounds.position.y + padding;
+
+	sf::RectangleShape backBtn(sf::Vector2f(btnW, btnH));
+	sf::RectangleShape retryBtn(sf::Vector2f(btnW, btnH));
+
+	// Positions (two buttons next to each other)
+	backBtn.setPosition(sf::Vector2f(menuX + padding, btnY));
+	retryBtn.setPosition(sf::Vector2f(menuX + padding * 2.f + btnW, btnY));
+
+	backBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	retryBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	backBtn.setOutlineColor(sf::Color::White);
+	retryBtn.setOutlineColor(sf::Color::White);
+	backBtn.setOutlineThickness(1.f);
+	retryBtn.setOutlineThickness(1.f);
+
+	// Center texts in buttons
+	auto centerTextInRect = [&](sf::Text& t, const sf::RectangleShape& r) 
+	{
+		sf::FloatRect tb = t.getLocalBounds();
+		sf::FloatRect rb = r.getGlobalBounds();
+		// use position/size fields
+		t.setPosition(sf::Vector2f(
+			rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+	};
+
+	centerTextInRect(backTxt, backBtn);
+	centerTextInRect(retryTxt, retryBtn);
+
+	std::optional<sf::Event> event;
+	bool chosen = false;
+
+	// Game over menu loop
+	while (_window.isOpen() && !chosen)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				DeinitializeBoard();
+				_window.close();
+				return;
+			}
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				// Back to main menu
+				if (backBtn.getGlobalBounds().contains(mfp))
+				{
+					// cleanup and go to main menu
+					DeinitializeBoard();
+					_currentState = GameState::MAIN_MENU;
+					// call main menu handler
+					stateFunctions[_currentState]();
+					return;
+				}
+				// Retry match
+				if (retryBtn.getGlobalBounds().contains(mfp))
+				{
+					// restart singleplayer match
+					DeinitializeBoard();
+					InitializeBoard();
+					// Enter game loop again
+					Update();
+					return;
+				}
+			}
+			// allow Esc to return to main menu
+			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			{
+				DeinitializeBoard();
+				_currentState = GameState::MAIN_MENU;
+				stateFunctions[_currentState]();
+				return;
+			}
+		}
+
+		_window.clear();
+		// draw current board behind (optional) then overlay modal
+		DrawGame();
+		_window.draw(backg);
+		_window.draw(label);
+		_window.draw(backBtn);
+		_window.draw(retryBtn);
+		_window.draw(backTxt);
+		_window.draw(retryTxt);
 		_window.display();
 	}
 }

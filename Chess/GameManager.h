@@ -32,6 +32,13 @@ enum class PieceType
 	PAWN
 };
 
+enum class GameResult
+{
+	BLACK_WINS,
+	WHITE_WINS,
+	DRAW
+};
+
 class GameManager
 {
 public:
