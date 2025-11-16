@@ -1,6 +1,5 @@
 #include "GameManager.h"
 #include "Colors.h"
-
 #include "Figurines/Figure.h"
 #include "Figurines/Bishop.h"
 #include "Figurines/King.h"
@@ -13,10 +12,7 @@ using std::cerr;
 using std::cout;
 
 /* TODO:
-* Handle checkmate and stalemate conditions and add game over screen with optoins to restart or go to main menu
 * Implement networking for multiplayer mode
-* Replace menu items by drawable strings using SFML functions (use png assets for figures only)
-* Add paused menu with options to resume, restart(singleplayer mode), leave match(multiplayer) / go to main menu
 * Add configuration menu to set network settings, sound settings, etc.
 * Add AI player bot for singleplayer mode
 * Get rid of global variables where possible
@@ -38,7 +34,8 @@ map<GameState, function<void()>> stateFunctions
 	{ GameState::CONNECT_TO_GAME, []() { GameManager::ConnectToGame(); }},
 	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(); }},
 	{ GameState::GAME_OVER, []() { GameManager::EndGameMenu(); }}, // Start GameOver menu here
-	{ GameState::CLOSED, [&]() { _window.close(); } }
+	{ GameState::CLOSED, [&]() { _window.close(); }},
+	{ GameState::SETTINGS, [&]() { GameManager::SettingsMenu(); }}
 };
 
 // Returns whether the given side's king is currently in check.
@@ -303,10 +300,10 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 
 // Draw the chess pieces for both players
 void GameManager::DrawFigures(sf::RenderWindow& window,
-	const std::vector<Figure*>& white,
-	const std::vector<Figure*>& black)
+	const vector<Figure*>& white,
+	const vector<Figure*>& black)
 {
-	auto drawSide = [&](const std::vector<Figure*>& figures)
+	auto drawSide = [&](const vector<Figure*>& figures)
 	{
 		for (auto figure : figures)
 		{
@@ -426,7 +423,7 @@ void GameManager::PromotePawn(Figure* pawn)
 	promoBackg.setOutlineThickness(3.f);
 
 	// Load sprites for the 4 promotion choices (color specific)
-	std::string suffix = isWhite ? "white" : "black";
+	string suffix = isWhite ? "white" : "black";
 	sf::Sprite rookSprite = AssetManager::GetSprite("rook_" + suffix);
 	sf::Sprite knightSprite = AssetManager::GetSprite("knight_" + suffix);
 	sf::Sprite bishopSprite = AssetManager::GetSprite("bishop_" + suffix);
@@ -528,7 +525,7 @@ void GameManager::PromotePawn(Figure* pawn)
 	}
 
 	// Map for creating the chosen piece (replaces switch)
-	std::map<PromotionChoice, std::function<Figure* ()>> constructors;
+	map<PromotionChoice, function<Figure* ()>> constructors;
 	constructors[PromotionChoice::ROOK] = [x, y, isWhite]() { return new Rook(x, y, isWhite); };
 	constructors[PromotionChoice::KNIGHT] = [x, y, isWhite]() { return new Knight(x, y, isWhite); };
 	constructors[PromotionChoice::BISHOP] = [x, y, isWhite]() { return new Bishop(x, y, isWhite); };
@@ -585,10 +582,15 @@ void GameManager::Update()
 				_window.close();
 				return;
 			}
-			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			if (event->is<sf::Event::KeyPressed>() &&
+				(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape) ||
+					sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)))
 			{
-				_currentState = GameState::MAIN_MENU;
-				stateFunctions[_currentState]();
+				//_currentState = GameState::MAIN_MENU;
+				//DeinitializeBoard();
+				//stateFunctions[_currentState]();
+				// Add a paused menu call here later
+                PausedMenu();
 			}
 			if (event->is<sf::Event::MouseButtonPressed>() && (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
@@ -658,7 +660,6 @@ void GameManager::Update()
 							if (EvaluateEndGame())
 							{
 								// If the game ended, close the window for now (we already deinitialized the board)
-								// TODO: Add some EndGame menu function to give the option to play again or go to the main menu
 								_window.close();
 								return;
 							}
@@ -691,65 +692,139 @@ void GameManager::Update()
 void GameManager::MainMenu()
 {
 	_window.setVerticalSyncEnabled(true);
-	// Buttons
-	sf::Sprite singleplayerButton = AssetManager::GetSprite("menu_singleplayer");
-	singleplayerButton.setPosition(sf::Vector2f(362.f, 150.f));
-	sf::Sprite hostButton = AssetManager::GetSprite("menu_host");
-	hostButton.setPosition(sf::Vector2f(362.f, 300.f));
-	sf::Sprite joinButton = AssetManager::GetSprite("menu_join");
-	joinButton.setPosition(sf::Vector2f(362.f, 450.f));
-	sf::Sprite quitButton = AssetManager::GetSprite("menu_quit");
-	quitButton.setPosition(sf::Vector2f(362.f, 600.f));
+
+	// Layout parameters
+	const float btnW = 400.f;
+	const float btnH = 84.f;
+	const float spacing = 24.f;
+	const float paddingTop = 120.f;
+
+	sf::Vector2u winSize = _window.getSize();
+	float menuX = (float(winSize.x) - btnW) / 2.f;
+	float menuY = paddingTop;
+
+	// Load font
+	sf::Font font;
+	string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	// Title
+	sf::Text title(font);
+    title.setString("CHESS");
+    title.setCharacterSize(56u);
+	title.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect tb = title.getLocalBounds();
+		
+		title.setPosition(sf::Vector2f(
+			(float(winSize.x) - tb.size.x) / 2.f - tb.position.x,
+			40.f
+		));
+	}
+
+	// Menu items text
+	std::array<string, 5> labels = { "SINGLEPLAYER", "HOST GAME", "JOIN GAME", "SETTINGS", "QUIT" };
+
+	// Create button shapes and texts
+	vector<sf::RectangleShape> buttons;
+	vector<sf::Text> texts;
+	buttons.reserve(labels.size());
+	texts.reserve(labels.size());
+
+	for (size_t i = 0; i < labels.size(); ++i)
+	{
+		sf::RectangleShape rect(sf::Vector2f(btnW, btnH));
+		rect.setPosition(sf::Vector2f(menuX, menuY + i * (btnH + spacing)));
+		rect.setFillColor(sf::Color(40, 40, 40, 220));
+		rect.setOutlineColor(sf::Color::White);
+		rect.setOutlineThickness(2.f);
+
+		sf::Text txt(font);
+        txt.setString(labels[i]);
+        txt.setCharacterSize(24u);
+		txt.setFillColor(sf::Color::White);
+
+		// center text inside rect
+		sf::FloatRect tb = txt.getLocalBounds();
+		sf::FloatRect rb = rect.getGlobalBounds();
+		txt.setPosition(sf::Vector2f(
+            rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+
+		buttons.push_back(rect);
+		texts.push_back(txt);
+	}
 
 	std::optional<sf::Event> event;
-	sf::Vector2i mousePos;
+	bool running = true;
 
-	// MAIN MENU LOOP
-	while (_window.isOpen())
+	while (_window.isOpen() && running)
 	{
-
 		while (event = _window.pollEvent())
 		{
 			if (event->is<sf::Event::Closed>())
-				_window.close();
-			// Handle mouse button press events
-			if (event->is<sf::Event::MouseButtonPressed>() &&
-				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
-				mousePos = sf::Mouse::getPosition(_window);
-				if (singleplayerButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
-				{
-					cout << "Single player -> player vs computer.\n";
-					// Transition to singleplayer game state
-					_currentState = GameState::SINGLEPLAYER;
-				}
-				if (hostButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
-				{
-					cout << "Host Game button clicked!\n";
-					// Transition to host game state
-					_currentState = GameState::HOST_GAME;
-				}
-				else if (joinButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
-				{
-					cout << "Join Game button clicked!\n";
-					// Transition to join game state
-					_currentState = GameState::CONNECT_TO_GAME;
-				}
-				else if (quitButton.getGlobalBounds().contains(static_cast<sf::Vector2f>(mousePos)))
-				{
-					cout << "Quit button clicked!\n";
-					// Transition to closed state
-					_currentState = GameState::CLOSED;
-				}
-				// Switch to the selected state and execute its function
+				_window.close();
+				return;
+			}
+			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			{
+				_currentState = GameState::CLOSED;
 				stateFunctions[_currentState]();
+				return;
+			}
+			if (event->is<sf::Event::MouseMoved>())
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				// hover effect
+				for (size_t i = 0; i < buttons.size(); ++i)
+				{
+					if (buttons[i].getGlobalBounds().contains(mfp))
+						buttons[i].setFillColor(sf::Color(80, 80, 80, 240));
+					else
+						buttons[i].setFillColor(sf::Color(40, 40, 40, 220));
+				}
+			}
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+
+				for (size_t i = 0; i < buttons.size(); ++i)
+				{
+					if (buttons[i].getGlobalBounds().contains(mfp))
+					{
+                        if (i == 0) // SINGLEPLAYER
+							_currentState = GameState::SINGLEPLAYER;
+                        else if (i == 1) // HOST GAME
+							_currentState = GameState::HOST_GAME;
+                        else if (i == 2) // JOIN GAME
+							_currentState = GameState::CONNECT_TO_GAME;
+                        else if (i == 3) // SETTINGS
+                            _currentState = GameState::SETTINGS;
+                        else if (i == 4) // QUIT
+                            _currentState = GameState::CLOSED;
+						// Transition to chosen state and run its handler
+						running = false;
+						stateFunctions[_currentState]();
+						break;
+					}
+				}
 			}
 		}
+
 		_window.clear();
-		_window.draw(singleplayerButton);
-		_window.draw(hostButton);
-		_window.draw(joinButton);
-		_window.draw(quitButton);
+		// optional background: draw current board if any, otherwise just dark bg
+		_window.clear(sf::Color(20, 20, 20));
+		_window.draw(title);
+		for (size_t i = 0; i < buttons.size(); ++i)
+		{
+			_window.draw(buttons[i]);
+			_window.draw(texts[i]);
+		}
 		_window.display();
 	}
 }
@@ -905,6 +980,151 @@ void GameManager::EndGameMenu()
 		_window.draw(retryBtn);
 		_window.draw(backTxt);
 		_window.draw(retryTxt);
+		_window.display();
+	}
+}
+
+void GameManager::SettingsMenu()
+{
+	cout << "Settings Menu (not implemented yet)...\n";
+	// Placeholder for settings menu logic
+	_currentState = GameState::CLOSED;
+	stateFunctions[_currentState]();
+}
+
+void GameManager::PausedMenu()
+{
+	// Modal frame layout (matching EndGameMenu style)
+	const float itemSize = 180.f;
+	const float padding = 40.f;
+	const float menuWidth = (itemSize * 2.f) + padding * 3.f; // two buttons + paddings
+	const float menuHeight = itemSize + padding * 4.f;        // label + buttons area
+
+	sf::Vector2u winSize = _window.getSize();
+	float menuX = (float(winSize.x) - menuWidth) / 2.f;
+	float menuY = (float(winSize.y) - menuHeight) / 2.f;
+
+	sf::RectangleShape backg(sf::Vector2f(menuWidth, menuHeight));
+	backg.setPosition(sf::Vector2f(menuX, menuY));
+	backg.setFillColor(sf::Color(30, 30, 30, 230));
+	backg.setOutlineColor(sf::Color::White);
+	backg.setOutlineThickness(3.f);
+
+	// Load font
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	// Label "Paused"
+	sf::Text label(font);
+	label.setString("PAUSED");
+	label.setCharacterSize(34u);
+	label.setFillColor(sf::Color::White);
+	label.setStyle(sf::Text::Bold);
+
+	// Correct label positioning for SFML 3 (use .position / .size)
+	{
+		sf::FloatRect lb = label.getLocalBounds(); // lb.position.x/y, lb.size.x/y
+		// center horizontally inside modal and set top at menuY + padding
+		float labelX = menuX + (menuWidth - lb.size.x) / 2.f - lb.position.x;
+		float labelY = menuY + padding - lb.position.y;
+		label.setPosition(sf::Vector2f(labelX, labelY));
+	}
+
+	// Buttons: RESUME (left) and LEAVE MATCH (right)
+	float btnW = itemSize;
+	float btnH = itemSize * 0.5f;
+
+	// Compute button Y based on the label's size and position
+	sf::FloatRect lb2 = label.getLocalBounds();
+	float btnY = (menuY + padding - lb2.position.y) + lb2.size.y + padding;
+
+	sf::RectangleShape resumeBtn(sf::Vector2f(btnW, btnH));
+	sf::RectangleShape leaveBtn(sf::Vector2f(btnW, btnH));
+	resumeBtn.setPosition(sf::Vector2f(menuX + padding, btnY));
+	leaveBtn.setPosition(sf::Vector2f(menuX + padding * 2.f + btnW, btnY));
+
+	resumeBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	leaveBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	resumeBtn.setOutlineColor(sf::Color::White);
+	leaveBtn.setOutlineColor(sf::Color::White);
+	resumeBtn.setOutlineThickness(1.f);
+	leaveBtn.setOutlineThickness(1.f);
+
+	sf::Text resumeTxt(font);
+	resumeTxt.setString("RESUME");
+	resumeTxt.setCharacterSize(20u);
+	sf::Text leaveTxt(font);
+	leaveTxt.setString("LEAVE MATCH");
+	leaveTxt.setCharacterSize(20u);
+	resumeTxt.setFillColor(sf::Color::White);
+	leaveTxt.setFillColor(sf::Color::White);
+
+	// helper to center text in button (SFML 3 API)
+	auto centerTextInRect = [&](sf::Text& t, const sf::RectangleShape& r)
+	{
+		sf::FloatRect tb = t.getLocalBounds();    // tb.position.x/y, tb.size.x/y
+		sf::FloatRect rb = r.getGlobalBounds();   // rb.position.x/y, rb.size.x/y
+		float tx = rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x;
+		float ty = rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y;
+		t.setPosition(sf::Vector2f(tx, ty));
+	};
+	centerTextInRect(resumeTxt, resumeBtn);
+	centerTextInRect(leaveTxt, leaveBtn);
+
+	// Modal loop
+	std::optional<sf::Event> event;
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				DeinitializeBoard();
+				_window.close();
+				return;
+			}
+
+			// Mouse click handling
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+
+				if (resumeBtn.getGlobalBounds().contains(mfp))
+					return;// Resume: simply close the modal and return to Update()
+
+				if (leaveBtn.getGlobalBounds().contains(mfp))
+				{
+					// Leave match: cleanup and go to main menu
+					DeinitializeBoard();
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+			}
+
+			// Allow Esc or P to resume
+			if (event->is<sf::Event::KeyPressed>() &&
+				(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape) ||
+					sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)))
+			{
+				// resume
+				return;
+			}
+		}
+
+		// Draw underlying game, then overlay modal
+		_window.clear();
+		DrawGame();
+		_window.draw(backg);
+		_window.draw(label);
+		_window.draw(resumeBtn);
+		_window.draw(leaveBtn);
+		_window.draw(resumeTxt);
+		_window.draw(leaveTxt);
 		_window.display();
 	}
 }

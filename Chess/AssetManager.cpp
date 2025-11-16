@@ -16,13 +16,7 @@ map<string, string> AssetManager::_fileNames = {
 	{ "knight_black", "Assets/Figurines/knight_black.png" },
 	{ "bishop_black", "Assets/Figurines/bishop_black.png" },
 	{ "queen_black",  "Assets/Figurines/queen_black.png" },
-	{ "king_black",   "Assets/Figurines/king_black.png" },
-	// Load Main Menu assets
-	// TODO: Replace menu these items by drawable strings using SFML functions
-	{ "menu_host", "Assets/MenuItems/MainMenu/menu_host_game.png" },
-	{ "menu_join", "Assets/MenuItems/MainMenu/menu_join_game.png" },
-    { "menu_quit", "Assets/MenuItems/MainMenu/menu_quit.png" },
-	{ "menu_singleplayer", "Assets/MenuItems/MainMenu/menu_singleplayer.png" },
+	{ "king_black",   "Assets/Figurines/king_black.png" }
 };
 
 void AssetManager::LoadTextures() 

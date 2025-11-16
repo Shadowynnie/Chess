@@ -19,7 +19,8 @@ enum class GameState
 	CONNECT_TO_GAME,
 	SINGLEPLAYER,
 	GAME_OVER,
-	CLOSED
+	CLOSED,
+	SETTINGS
 };
 
 enum class PieceType
@@ -68,7 +69,6 @@ public:
 	static bool OnlyKingsLeft();
 	static bool EvaluateEndGame(); // returns true when game ended (prints to console and triggers cleanup)
 	static void EndGameMenu();
-	//static void ShowPossibleMoves(Figure* figure); // Function to highlight possible moves for a selected figure
-	//static void HandleMenuEvents(); // Function to handle menu events
-	//static void HandleGameEvents(); // Function to handle game events
+    static void SettingsMenu(); // Function to display settings menu
+    static void PausedMenu(); // Function to display paused menu
 };
