@@ -193,12 +193,14 @@ void NetworkManager::ServiceLoop()
                             MoveMessage mv = *mvOpt;
                             if (m_isServer)
                             {
-                                // Server: validate and apply move; if accepted, broadcast to all peers
-                                bool applied = GameManager::ServerValidateAndApplyMove(mv);
-                                if (applied)
+                                // Server: validate move (no state changes here)
+                                bool valid = GameManager::ServerValidateAndApplyMove(mv);
+                                if (valid)
                                 {
-                                    // Broadcast the same packet to all peers (reliable, channel 0)
-                                    // Re-create packet because ENet will own/destroy it.
+                                    // Enqueue for the local main/UI thread so server applies move and updates sprites there
+                                    PushIncomingMove(mv);
+
+                                    // Broadcast the validated move to all connected peers
                                     auto buffer = SerializeMove(mv);
                                     ENetPacket* pkt = enet_packet_create(buffer.data(), buffer.size(), ENET_PACKET_FLAG_RELIABLE);
                                     if (pkt)
@@ -209,7 +211,6 @@ void NetworkManager::ServiceLoop()
                                 }
                                 else
                                 {
-                                    // Optionally send a rejection message (not implemented)
                                     cerr << "Server rejected incoming move request\n";
                                 }
                             }

@@ -669,7 +669,8 @@ void GameManager::ApplyMoveLocal(const MoveMessage& m)
 }
 
 // Server-side: validate move against authoritative board, apply it if legal, return true if applied.
-// This is safe to call from network thread as it locks s_gameMutex.
+// IMPORTANT: Do NOT apply the move here (network thread). Validation only.
+// The main (UI) thread will apply the authoritative move via ApplyMoveLocal().
 bool GameManager::ServerValidateAndApplyMove(const MoveMessage& m)
 {
 	std::lock_guard lock(s_gameMutex);
@@ -711,7 +712,7 @@ bool GameManager::ServerValidateAndApplyMove(const MoveMessage& m)
 	// Apply the move on the board (temporary)
 	source->SetFigure(nullptr);
 	target->SetFigure(fig);
-	fig->setPosition(target->GetX(), target->GetY());
+	fig->setPosition(target->GetX(), target->GetY()); // NOTE: this only updates logical X/Y (no sprite)
 
 	// Build local enemy list that reflects captured piece removal (if any)
 	auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
@@ -744,44 +745,19 @@ bool GameManager::ServerValidateAndApplyMove(const MoveMessage& m)
 	if (king)
 		kingInCheck = king->IsThreatened(_tiles, localEnemies);
 
+	// revert temporary simulation (we do not apply here)
+	source->SetFigure(fig);
+	target->SetFigure(captured);
+	fig->setPosition(oldX, oldY);
+
 	if (kingInCheck)
 	{
-		// revert
-		source->SetFigure(fig);
-		target->SetFigure(captured);
-		fig->setPosition(oldX, oldY);
 		return false;
 	}
 
-	// Move is legal. Keep applied. Remove captured figure from lists and delete if any
-	if (captured)
-	{
-		auto& victimList = captured->GetColor() ? _playerOneFigures : _playerTwoFigures;
-		auto it = std::find(victimList.begin(), victimList.end(), captured);
-		if (it != victimList.end())
-			victimList.erase(it);
-		delete captured;
-	}
-
-	// Handle promotion if needed (promotion field currently unused; optional)
-	if (typeid(*target->GetFigure()) == typeid(Pawn))
-	{
-		Pawn* pawn = dynamic_cast<Pawn*>(target->GetFigure());
-		if (pawn && pawn->CanPromote())
-		{
-			// Server can run promotion UI or default to queen:
-			PromotePawn(pawn);
-		}
-	}
-
-	// Finish turn switching & endgame checks
-	ClearHighlitghts();
-	_currentRound = !_currentRound;
-	ResetEnPassantFlags();
-
-	// Note: EvaluateEndGame will set state / invoke handlers if needed
-	EvaluateEndGame();
-
+	// Move is legal. DO NOT apply it here on the network thread.
+	// Return true so the caller (network thread) can broadcast and enqueue the move
+	// for the main thread to apply (ApplyMoveLocal).
 	return true;
 }
 
