@@ -10,10 +10,6 @@ int main()
 {
 	AssetManager::LoadTextures();
     GameManager::MainMenu();
-
-	//GameManager gameManager;
-	//AssetManager::loadTextures();
-	//gameManager.InitializeBoard();
-	//gameManager.Update();
+    GameManager::ShutdownNetwork();
 	return 0;
 }

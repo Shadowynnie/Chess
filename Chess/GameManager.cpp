@@ -8,8 +8,11 @@
 #include "Figurines/Queen.h"
 #include "Figurines/Pawn.h"
 
+
+
 using std::cerr;
 using std::cout;
+
 
 /* TODO:
 * Implement networking for multiplayer mode
@@ -17,6 +20,9 @@ using std::cout;
 * Add AI player bot for singleplayer mode
 * Get rid of global variables where possible
 */
+
+NetworkManager _networkMgr;
+std::thread _networkThread;
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
@@ -37,6 +43,16 @@ map<GameState, function<void()>> stateFunctions
 	{ GameState::CLOSED, [&]() { _window.close(); }},
 	{ GameState::SETTINGS, [&]() { GameManager::SettingsMenu(); }}
 };
+
+void GameManager::ShutdownNetwork()
+{
+	// Stop the network service loop (thread will exit its loop)
+	_networkMgr.StopServiceLoop();
+
+	// Join the network thread if it was started
+	if (_networkThread.joinable())
+		_networkThread.join();
+}
 
 // Returns whether the given side's king is currently in check.
 bool GameManager::IsKingInCheck(bool isWhite)
@@ -561,6 +577,15 @@ void GameManager::ResetEnPassantFlags()
 	}
 }
 
+//====================================TESTING========================================
+void sendTestData(NetworkManager& nwmgr)
+{
+	string testData = "Sample FEN string data for testing.";
+	cout << "Sending test data...\n";
+	nwmgr.SendTextReliable(nwmgr.GetPeer(), testData, MessageType::FULL_FEN);
+}
+//===================================================================================
+
 void GameManager::Update()
 {
 	std::optional<sf::Event> event;
@@ -663,6 +688,7 @@ void GameManager::Update()
 								_window.close();
 								return;
 							}
+                            sendTestData(_networkMgr); // Networking test function call
 						}
 					}
 					// When the player clicks on a figure for the first time
@@ -724,7 +750,12 @@ void GameManager::MainMenu()
 	}
 
 	// Menu items text
-	std::array<string, 5> labels = { "SINGLEPLAYER", "HOST GAME", "JOIN GAME", "SETTINGS", "QUIT" };
+	std::array<string, 5> labels =
+	{	"SINGLEPLAYER",
+		"HOST GAME",
+		"JOIN GAME",
+		"SETTINGS",
+		"QUIT" };
 
 	// Create button shapes and texts
 	vector<sf::RectangleShape> buttons;
@@ -805,8 +836,11 @@ void GameManager::MainMenu()
 							_currentState = GameState::CONNECT_TO_GAME;
                         else if (i == 3) // SETTINGS
                             _currentState = GameState::SETTINGS;
-                        else if (i == 4) // QUIT
-                            _currentState = GameState::CLOSED;
+						else if (i == 4) // QUIT
+						{
+							ShutdownNetwork();
+							_currentState = GameState::CLOSED;
+						}
 						// Transition to chosen state and run its handler
 						running = false;
 						stateFunctions[_currentState]();
@@ -944,6 +978,7 @@ void GameManager::EndGameMenu()
 				if (backBtn.getGlobalBounds().contains(mfp))
 				{
 					// cleanup and go to main menu
+					ShutdownNetwork();
 					DeinitializeBoard();
 					_currentState = GameState::MAIN_MENU;
 					// call main menu handler
@@ -1100,6 +1135,7 @@ void GameManager::PausedMenu()
 				{
 					// Leave match: cleanup and go to main menu
 					DeinitializeBoard();
+					ShutdownNetwork();
 					_currentState = GameState::MAIN_MENU;
 					stateFunctions[_currentState]();
 					return;
@@ -1132,13 +1168,191 @@ void GameManager::PausedMenu()
 void GameManager::HostGame()
 {
 	cout << "Hosting a Game...\n";
-	// Placeholder for hosting game logic
+
+	// Start ENet server
+	if (!_networkMgr.InitializeHostAsServer(7777))
+	{
+		cerr << "Failed to start server\n";
+		_currentState = GameState::MAIN_MENU;
+		stateFunctions[_currentState]();
+		return;
+	}
+
+	// Launch network service thread
+	_networkThread = std::thread(&NetworkManager::ServiceLoop, &_networkMgr);
+
+	// Prepare modal UI (simple centered text + Cancel button)
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	const float backW = 520.f;
+	const float backH = 220.f;
+	sf::Vector2u winSize = _window.getSize();
+	float backX = (float(winSize.x) - backW) / 2.f;
+	float backY = (float(winSize.y) - backH) / 2.f;
+
+	sf::RectangleShape back(sf::Vector2f(backW, backH));
+	back.setPosition(sf::Vector2f(backX, backY));
+	back.setFillColor(sf::Color(30, 30, 30, 230));
+	back.setOutlineColor(sf::Color::White);
+	back.setOutlineThickness(3.f);
+
+	sf::Text label(font);
+	label.setString("Waiting for client to connect...");
+	label.setCharacterSize(24u);
+	label.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect lb = label.getLocalBounds();
+		label.setPosition(sf::Vector2f(backX + (backW - lb.size.x) / 2.f - lb.position.x,
+			backY + 30.f - lb.position.y));
+	}
+
+	// Cancel button
+	const float btnW = 160.f, btnH = 52.f;
+	sf::RectangleShape cancelBtn(sf::Vector2f(btnW, btnH));
+	cancelBtn.setPosition(sf::Vector2f(backX + (backW - btnW) / 2.f, backY + backH - btnH - 24.f));
+	cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	cancelBtn.setOutlineColor(sf::Color::White);
+	cancelBtn.setOutlineThickness(1.f);
+
+	sf::Text cancelTxt(font);
+	cancelTxt.setString("CANCEL");
+	cancelTxt.setCharacterSize(20u);
+	cancelTxt.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect tb = cancelTxt.getLocalBounds();
+		sf::FloatRect rb = cancelBtn.getGlobalBounds();
+		cancelTxt.setPosition(sf::Vector2f(
+			rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+	}
+
+	// Modal loop: returns only when client connects or user cancels
+	std::optional<sf::Event> event;
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				// user closed window: ensure network stops then exit
+				DeinitializeBoard();
+				ShutdownNetwork();
+				_window.close();
+				return;
+			}
+
+			if (event->is<sf::Event::MouseMoved>())
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+					cancelBtn.setFillColor(sf::Color(100, 100, 100, 240));
+				else
+					cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+			}
+
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+				{
+					// Cancel hosting and return to main menu
+					ShutdownNetwork();
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+			}
+		}
+
+		// Check if a client connected
+		if (_networkMgr.IsConnected())
+		{
+			cout << "Client connected — starting match.\n";
+			// Start the game loop (server-authoritative)
+			InitializeBoard();
+			PlayGame();
+			// After the match ends, ensure network is stopped and join thread
+			ShutdownNetwork();
+			// Return to main menu afterwards
+			_currentState = GameState::MAIN_MENU;
+			stateFunctions[_currentState]();
+			return;
+		}
+
+		// Draw modal
+		_window.clear();
+		DrawGame(); // optional background
+		_window.draw(back);
+		_window.draw(label);
+		_window.draw(cancelBtn);
+		_window.draw(cancelTxt);
+		_window.display();
+
+		// small sleep to avoid busy loop (keeps UI responsive)
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+	}
+
+	// If we get here, make sure network stopped
+	ShutdownNetwork();
 }
 
 void GameManager::ConnectToGame()
 {
 	cout << "Connecting to a Game...\n";
-	// Placeholder for connecting to game logic
+
+	
+	string host = "127.0.0.1";
+
+	const uint16_t port = 7777;
+
+	if (!_networkMgr.InitializeHostAsClient(host.c_str(), port))
+	{
+		cerr << "Failed to initialize client host.\n";
+		// return to main menu
+		_currentState = GameState::MAIN_MENU;
+		stateFunctions[_currentState]();
+		return;
+	}
+
+	// Start network thread
+	_networkThread = std::thread(&NetworkManager::ServiceLoop, &_networkMgr);
+
+	// Wait short time for connect (non-UI blocking is preferable; we use console wait here)
+	const int maxWaitMs = 3000;
+	const int stepMs = 100;
+	int waited = 0;
+	cout << "Waiting for connection...\n";
+	while (waited < maxWaitMs)
+	{
+		if (_networkMgr.IsConnected())
+			break;
+		std::this_thread::sleep_for(std::chrono::milliseconds(stepMs));
+		waited += stepMs;
+	}
+
+	if (!_networkMgr.IsConnected())
+	{
+		cerr << "Connection timed out.\n";
+		// Stop network and join thread
+		ShutdownNetwork();
+		// Go back to main menu
+		_currentState = GameState::MAIN_MENU;
+		stateFunctions[_currentState]();
+		return;
+	}
+
+	cout << "Connected to server. Entering game loop.\n";
+	// Start playing (you may want a dedicated multiplayer PlayGame)
+
+	InitializeBoard();
+	PlayGame();
 }
 
 void GameManager::PlayGame()
@@ -1148,3 +1362,4 @@ void GameManager::PlayGame()
 	InitializeBoard();
 	Update();
 }
+

@@ -5,12 +5,15 @@
 #include <map>
 #include <functional>
 #include <algorithm>
+#include <thread>
 
+#include "Networking/NetworkManager.h"
 #include "Tile.h"
 
 using std::vector;
 using std::map;
 using std::function;
+
 
 enum class GameState
 {
@@ -39,6 +42,7 @@ enum class GameResult
 	WHITE_WINS,
 	DRAW
 };
+
 
 class GameManager
 {
@@ -71,4 +75,5 @@ public:
 	static void EndGameMenu();
     static void SettingsMenu(); // Function to display settings menu
     static void PausedMenu(); // Function to display paused menu
+	static void ShutdownNetwork();
 };
