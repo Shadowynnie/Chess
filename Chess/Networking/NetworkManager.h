@@ -1,4 +1,3 @@
-
 #pragma once
 #include <enet/enet.h>
 #include <cstdint>
@@ -7,6 +6,7 @@
 #include <string>
 #include <atomic>
 #include <chrono>
+#include <mutex>
 
 using std::string;
 
@@ -61,14 +61,28 @@ public:
     ENetHost* Host() const { return m_host; }
     ENetPeer* GetPeer() const { return m_peer; }     // last connected peer (useful for client)
     bool IsConnected() const { return m_connected.load(); }
+    bool IsServer() const { return m_isServer; }
+
+    // Incoming-move queue (thread-safe): main thread polls TryPopIncomingMove()
+    bool TryPopIncomingMove(MoveMessage& out);
 
 private:
+    // push from network thread
+    void PushIncomingMove(const MoveMessage& m);
+
     ENetHost* m_host{ nullptr };
     ENetPeer* m_peer{ nullptr };   // store peer on connect event
     std::atomic<bool> m_running{ false };
     std::atomic<bool> m_connected{ false };
 
+    // role
+    bool m_isServer{ false };
+
     // keep-alive
     std::chrono::steady_clock::time_point m_lastPing{};
     int m_pingIntervalMs{ DEFAULT_PING_INTERVAL_MS };
+
+    // incoming queue
+    std::mutex m_incomingMutex;
+    std::vector<MoveMessage> m_incomingMoves;
 };

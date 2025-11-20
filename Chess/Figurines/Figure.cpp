@@ -9,7 +9,7 @@ Figure::Figure(int x, int y, bool isWhite) : Sprite(Texture)
 	//Sprite.setTexture(Texture);
 }
 
-sf::Sprite Figure::GetSprite() const
+const sf::Sprite& Figure::GetSprite() const
 {
 	return Sprite;
 }

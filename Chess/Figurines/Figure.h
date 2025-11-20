@@ -19,21 +19,22 @@ protected:
 
 public:
 	Figure(int x, int y, bool isWhite);
-	Figure() : X(0), Y(0), IsWhite(true), Sprite(Texture){}
+	Figure() : X(0), Y(0), IsWhite(true), Sprite(Texture) {}
 	virtual ~Figure() = default;
 
-	virtual void Move(Tile* tile, Tile* previousTile, Tile tiles[8][8]={});
+	virtual void Move(Tile* tile, Tile* previousTile, Tile tiles[8][8] = {});
 	virtual void Move(Tile* tile, Tile* previousTile, vector<Figure*>& enemyFigures);
-	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8])=0;
+	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8]) = 0;
 	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFigures);
-    void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
-	virtual sf::Sprite GetSprite() const;
+	void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
+	// Return sprite by const reference to avoid copying and keep a single authoritative sprite instance
+	virtual const sf::Sprite& GetSprite() const;
 
 	int GetX() const;
 	int GetY() const;
 	bool GetColor() const;
-    Tile* GetCurrentTile(Tile tiles[8][8]) const;
+	Tile* GetCurrentTile(Tile tiles[8][8]) const;
 
 	//Testing functions
-    void setPosition(int x, int y) { X = x; Y = y; }
+	void setPosition(int x, int y) { X = x; Y = y; }
 };

@@ -61,11 +61,11 @@ public:
 	static void CheckForCheck(); // Function to check if a king is in check
 	static void PromotePawn(Figure* pawn); // Function to handle pawn promotion
 	static void ResetEnPassantFlags(); // Function to reset en passant flags for all pawns
-	static void Update(); // Function to update the game state
+	static void Update(bool isMultiplayer = false); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
 	static void HostGame(); // Function to host a game
 	static void ConnectToGame(); // Function to connect to a game
-	static void PlayGame(); // Singleplayer or multiplayer game loop
+	static void PlayGame(bool isMultiplayer = false); // Singleplayer or multiplayer game loop
 
 	// Endgame / check utilities
 	static bool IsKingInCheck(bool isWhite);
@@ -76,4 +76,14 @@ public:
     static void SettingsMenu(); // Function to display settings menu
     static void PausedMenu(); // Function to display paused menu
 	static void ShutdownNetwork();
+
+	// Multiplayer integration helpers
+	// Called by network thread when server receives a move request; validates & applies under mutex
+	static bool ServerValidateAndApplyMove(const MoveMessage& m);
+
+	// Called by main (UI) thread when a validated move arrives from server; applies without re-validation
+	static void ApplyMoveLocal(const MoveMessage& m);
+
+	// Expose mutex protecting game state (network thread locks before calling server validation)
+	static std::mutex& GetGameMutex();
 };

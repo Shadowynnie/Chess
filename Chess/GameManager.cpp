@@ -23,6 +23,11 @@ using std::cout;
 
 NetworkManager _networkMgr;
 std::thread _networkThread;
+static bool _isHosting = false; // true when this instance is the server/host
+static std::mutex s_gameMutex; // to protect game state for safe cross-thread access
+
+static bool _localIsWhite = true; // true = this instance plays White, false = Black
+static bool _awaitingServer = false; // when client has sent move and waits for authoritative broadcast
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
@@ -38,7 +43,7 @@ map<GameState, function<void()>> stateFunctions
 	{ GameState::MAIN_MENU, [&]() { GameManager::MainMenu(); }},
 	{ GameState::HOST_GAME, []() { GameManager::HostGame(); }},
 	{ GameState::CONNECT_TO_GAME, []() { GameManager::ConnectToGame(); }},
-	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(); }},
+	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(false); }},
 	{ GameState::GAME_OVER, []() { GameManager::EndGameMenu(); }}, // Start GameOver menu here
 	{ GameState::CLOSED, [&]() { _window.close(); }},
 	{ GameState::SETTINGS, [&]() { GameManager::SettingsMenu(); }}
@@ -319,16 +324,20 @@ void GameManager::DrawFigures(sf::RenderWindow& window,
 	const vector<Figure*>& white,
 	const vector<Figure*>& black)
 {
-	auto drawSide = [&](const vector<Figure*>& figures)
+	// Draw each occupied tile's figure once (authoritative)
+	for (int x = 0; x < 8; ++x)
 	{
-		for (auto figure : figures)
+		for (int y = 0; y < 8; ++y)
 		{
-			if (figure)
-				window.draw(figure->GetSprite());
+			Tile& t = _tiles[x][y];
+			if (t.IsOccupied())
+			{
+				Figure* f = t.GetFigure();
+				if (f)
+					window.draw(f->GetSprite());
+			}
 		}
-	};
-	drawSide(white);
-	drawSide(black);
+	}
 }
 
 // Draw highlighted tiles
@@ -586,7 +595,198 @@ void sendTestData(NetworkManager& nwmgr)
 }
 //===================================================================================
 
-void GameManager::Update()
+std::mutex& GameManager::GetGameMutex()
+{
+	return s_gameMutex;
+}
+
+// Apply a move without validating (used by clients when server broadcasts authoritative move).
+void GameManager::ApplyMoveLocal(const MoveMessage& m)
+{
+	// Expect caller holds mutex or is main thread; we'll lock to be safe
+	std::lock_guard lock(s_gameMutex);
+
+	if (m.fromX > 7 || m.fromY > 7 || m.toX > 7 || m.toY > 7)
+		return;
+
+	Tile* source = &_tiles[m.fromX][m.fromY];
+	Tile* target = &_tiles[m.toX][m.toY];
+	if (!source || !target)
+		return;
+
+	Figure* fig = source->GetFigure();
+	if (!fig)
+		return;
+
+	// If target occupied, remove captured piece from appropriate vector
+	Figure* captured = target->GetFigure();
+	if (captured)
+	{
+		auto& victimList = captured->GetColor() ? _playerOneFigures : _playerTwoFigures;
+		auto it = std::find(victimList.begin(), victimList.end(), captured);
+		if (it != victimList.end())
+		{
+			victimList.erase(it);
+			delete captured;
+		}
+	}
+
+	// Move the figure (use existing Move overloads)
+	// Attempt pawn-aware overload if this is a Pawn
+	if (typeid(*fig) == typeid(Pawn))
+	{
+		Pawn* pawn = dynamic_cast<Pawn*>(fig);
+		if (pawn)
+			pawn->Move(target, source, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+	}
+	else
+	{
+		fig->Move(target, source, _tiles);
+	}
+
+	// Promotion handling from network: if promotion field provided and not zero,
+	// you could replace pawn by chosen piece here. For now keep local promotion flow.
+	if (typeid(*target->GetFigure()) == typeid(Pawn))
+	{
+		Pawn* pawn = dynamic_cast<Pawn*>(target->GetFigure());
+		if (pawn && pawn->CanPromote())
+		{
+			// For now, run local promotion UI (server should have already applied chosen promotion ideally).
+			PromotePawn(pawn);
+		}
+	}
+
+	// Update turn and flags
+	ClearHighlitghts();
+	_currentRound = !_currentRound;
+	ResetEnPassantFlags();
+
+	// Clear awaiting state (in case a client was waiting for server confirmation)
+	_awaitingServer = false;
+
+	// Evaluate endgame
+	EvaluateEndGame();
+}
+
+// Server-side: validate move against authoritative board, apply it if legal, return true if applied.
+// This is safe to call from network thread as it locks s_gameMutex.
+bool GameManager::ServerValidateAndApplyMove(const MoveMessage& m)
+{
+	std::lock_guard lock(s_gameMutex);
+
+	// basic bounds
+	if (m.fromX > 7 || m.fromY > 7 || m.toX > 7 || m.toY > 7)
+		return false;
+
+	Tile* source = &_tiles[m.fromX][m.fromY];
+	Tile* target = &_tiles[m.toX][m.toY];
+	if (!source || !target) return false;
+
+	Figure* fig = source->GetFigure();
+	if (!fig) return false;
+
+	// must be side to move
+	if (fig->GetColor() != _currentRound) return false;
+
+	// obtain candidate moves (king-aware)
+	vector<Tile*> possibleMoves;
+	if (typeid(*fig) == typeid(King))
+	{
+		auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+		possibleMoves = fig->GetPossibleMoves(_tiles, enemyFigures);
+	}
+	else
+		possibleMoves = fig->GetPossibleMoves(_tiles);
+
+	// check if target is among possibleMoves
+	auto itMove = std::find(possibleMoves.begin(), possibleMoves.end(), target);
+	if (itMove == possibleMoves.end())
+		return false;
+
+	// simulate move and test whether king is safe after the move
+	Figure* captured = target->GetFigure();
+	int oldX = fig->GetX();
+	int oldY = fig->GetY();
+
+	// Apply the move on the board (temporary)
+	source->SetFigure(nullptr);
+	target->SetFigure(fig);
+	fig->setPosition(target->GetX(), target->GetY());
+
+	// Build local enemy list that reflects captured piece removal (if any)
+	auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+	vector<Figure*> localEnemies = enemyFigures;
+	if (captured)
+	{
+		auto rit = std::find(localEnemies.begin(), localEnemies.end(), captured);
+		if (rit != localEnemies.end())
+			localEnemies.erase(rit);
+	}
+
+	// Find this side's king (might be the moved piece)
+	King* king = nullptr;
+	if (typeid(*fig) == typeid(King))
+		king = dynamic_cast<King*>(fig);
+	else
+	{
+		auto& friendly = _currentRound ? _playerOneFigures : _playerTwoFigures;
+		for (auto friendFig : friendly)
+		{
+			if (typeid(*friendFig) == typeid(King))
+			{
+				king = dynamic_cast<King*>(friendFig);
+				break;
+			}
+		}
+	}
+
+	bool kingInCheck = false;
+	if (king)
+		kingInCheck = king->IsThreatened(_tiles, localEnemies);
+
+	if (kingInCheck)
+	{
+		// revert
+		source->SetFigure(fig);
+		target->SetFigure(captured);
+		fig->setPosition(oldX, oldY);
+		return false;
+	}
+
+	// Move is legal. Keep applied. Remove captured figure from lists and delete if any
+	if (captured)
+	{
+		auto& victimList = captured->GetColor() ? _playerOneFigures : _playerTwoFigures;
+		auto it = std::find(victimList.begin(), victimList.end(), captured);
+		if (it != victimList.end())
+			victimList.erase(it);
+		delete captured;
+	}
+
+	// Handle promotion if needed (promotion field currently unused; optional)
+	if (typeid(*target->GetFigure()) == typeid(Pawn))
+	{
+		Pawn* pawn = dynamic_cast<Pawn*>(target->GetFigure());
+		if (pawn && pawn->CanPromote())
+		{
+			// Server can run promotion UI or default to queen:
+			PromotePawn(pawn);
+		}
+	}
+
+	// Finish turn switching & endgame checks
+	ClearHighlitghts();
+	_currentRound = !_currentRound;
+	ResetEnPassantFlags();
+
+	// Note: EvaluateEndGame will set state / invoke handlers if needed
+	EvaluateEndGame();
+
+	return true;
+}
+
+
+void GameManager::Update(bool isMultiplayer)
 {
 	std::optional<sf::Event> event;
 	sf::Vector2i mousePos;
@@ -596,6 +796,14 @@ void GameManager::Update()
 	// GAME LOOP
 	while (_window.isOpen())
 	{
+		// First: consume any incoming authoritative moves queued by NetworkManager
+		MoveMessage incoming;
+		while (_networkMgr.TryPopIncomingMove(incoming))
+		{
+			// apply on main thread (no race with network thread)
+			ApplyMoveLocal(incoming);
+		}
+
 		_window.clear();
 		DrawGame();
 		// Handle input events
@@ -611,19 +819,16 @@ void GameManager::Update()
 				(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape) ||
 					sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)))
 			{
-				//_currentState = GameState::MAIN_MENU;
-				//DeinitializeBoard();
-				//stateFunctions[_currentState]();
-				// Add a paused menu call here later
                 PausedMenu();
 			}
-			if (event->is<sf::Event::MouseButtonPressed>() && (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
+			if (event->is<sf::Event::MouseButtonPressed>() &&
+				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
 				mousePos = sf::Mouse::getPosition(_window);
 				int tileX = mousePos.x / 128;
 				int tileY = mousePos.y / 128;
 
-				cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << "\n";
+				//cout << "Mouse clicked at tile X: " << tileX << " Y: " << tileY << "\n";
 
 				if (tileX >= 0 && tileX < 8 && tileY >= 0 && tileY < 8)
 				{
@@ -646,49 +851,131 @@ void GameManager::Update()
 					// When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
 					{
-						// Move the figure to the selected tile
-						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
+						// Enforce multiplayer restrictions: local player must be allowed to move
+						if (isMultiplayer && (_awaitingServer || (_localIsWhite != _currentRound)))
 						{
-							if (selectedTile->IsOccupied())
-							{	// Capture opponent's piece
-								if (selectedTile->GetFigure()->GetColor() != _currentRound)
-									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
-							}
-							else // Normal move to empty tile
-							{	//previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile,_tiles);
-								if (typeid(*previousSelectedTile->GetFigure()) == typeid(Pawn))
+							// either waiting for server or not our side to move -> ignore click
+							ClearHighlitghts();
+							previousSelectedTile = nullptr;
+						}
+						else if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
+						{
+							// Build MoveMessage (simple payload)
+							MoveMessage moveMsg;
+							moveMsg.fromX = static_cast<uint8_t>(previousSelectedTile->GetX());
+							moveMsg.fromY = static_cast<uint8_t>(previousSelectedTile->GetY());
+							moveMsg.toX = static_cast<uint8_t>(selectedTile->GetX());
+							moveMsg.toY = static_cast<uint8_t>(selectedTile->GetY());
+							moveMsg.promotion = 0; // TODO: set promotion choice when implemented
+							moveMsg.flags = 0;
+
+							if (isMultiplayer)
+							{
+								if (_isHosting)
 								{
-									Pawn* pawn = dynamic_cast<Pawn*>(previousSelectedTile->GetFigure());
-									if (pawn)
-										pawn->Move(selectedTile, previousSelectedTile, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+									// Server: validate & apply locally (this path already existed)
+									if (selectedTile->IsOccupied())
+									{   // Capture opponent's piece
+										if (selectedTile->GetFigure()->GetColor() != _currentRound)
+											previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
+									}
+									else // Normal move to empty tile
+									{
+										if (typeid(*previousSelectedTile->GetFigure()) == typeid(Pawn))
+										{
+											Pawn* pawn = dynamic_cast<Pawn*>(previousSelectedTile->GetFigure());
+											if (pawn)
+												pawn->Move(selectedTile, previousSelectedTile, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+										}
+										else
+											previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
+									}
+
+									// Promotion
+									if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
+									{
+										Pawn* pawn = dynamic_cast<Pawn*>(selectedTile->GetFigure());
+										if (pawn && pawn->CanPromote())
+											PromotePawn(pawn);
+									}
+
+									// Broadcast to peers (NetworkManager already does this on server validate; for server-initiated moves, send directly)
+									ENetPeer* peer = _networkMgr.GetPeer();
+									if (peer)
+									{
+										NetworkManager::SendMoveReliable(peer, moveMsg);
+									}
+
+									// finish turn
+									ClearHighlitghts();
+									_currentRound = !_currentRound;
+									previousSelectedTile = nullptr;
+									ResetEnPassantFlags();
+
+									if (EvaluateEndGame())
+									{
+										_window.close();
+										return;
+									}
 								}
 								else
-									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
+								{
+									// Client: send move to server and wait for authoritative update
+									ENetPeer* serverPeer = _networkMgr.GetPeer();
+									if (serverPeer)
+									{
+										bool ok = NetworkManager::SendMoveReliable(serverPeer, moveMsg);
+										if (!ok)
+											cerr << "Failed to send move to server\n";
+										// disable further input until server confirms/broadcasts
+										_awaitingServer = true;
+										ClearHighlitghts();
+										previousSelectedTile = nullptr;
+									}
+									else
+									{
+										cerr << "No server peer available to send move\n";
+									}
+								}
 							}
-
-							// Check for pawn promotion
-							if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
+							else // singleplayer: apply move locally as before
 							{
-								Pawn* pawn = dynamic_cast<Pawn*>(selectedTile->GetFigure());
-								if (pawn && pawn->CanPromote())
-									PromotePawn(pawn);
-							}
+								if (selectedTile->IsOccupied())
+								{   // Capture opponent's piece
+									if (selectedTile->GetFigure()->GetColor() != _currentRound)
+										previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, selectedTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
+								}
+								else // Normal move to empty tile
+								{
+									if (typeid(*previousSelectedTile->GetFigure()) == typeid(Pawn))
+									{
+										Pawn* pawn = dynamic_cast<Pawn*>(previousSelectedTile->GetFigure());
+										if (pawn)
+											pawn->Move(selectedTile, previousSelectedTile, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+									}
+									else
+										previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
+								}
 
-							ClearHighlitghts();
-							// Switch turns
-							_currentRound = !_currentRound;
-							previousSelectedTile = nullptr;
-							// Reset en passant flags for opponent pawns
-							ResetEnPassantFlags();
+								// Promotion
+								if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
+								{
+									Pawn* pawn = dynamic_cast<Pawn*>(selectedTile->GetFigure());
+									if (pawn && pawn->CanPromote())
+										PromotePawn(pawn);
+								}
 
-							// Evaluate endgame conditions after the move
-							if (EvaluateEndGame())
-							{
-								// If the game ended, close the window for now (we already deinitialized the board)
-								_window.close();
-								return;
+								ClearHighlitghts();
+								_currentRound = !_currentRound;
+								previousSelectedTile = nullptr;
+								ResetEnPassantFlags();
+
+								if (EvaluateEndGame())
+								{
+									_window.close();
+									return;
+								}
 							}
-                            sendTestData(_networkMgr); // Networking test function call
 						}
 					}
 					// When the player clicks on a figure for the first time
@@ -706,6 +993,8 @@ void GameManager::Update()
 						ClearHighlitghts();
 						selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
 						previousSelectedTile = selectedTile;
+
+						//sendTestData(_networkMgr); // Networking test function call
 					}
 					CheckForCheck();
 				}
@@ -1178,6 +1467,10 @@ void GameManager::HostGame()
 		return;
 	}
 
+    _isHosting = true; // set the role flag
+	_localIsWhite = true;
+	_awaitingServer = false;
+
 	// Launch network service thread
 	_networkThread = std::thread(&NetworkManager::ServiceLoop, &_networkMgr);
 
@@ -1271,16 +1564,14 @@ void GameManager::HostGame()
 			}
 		}
 
-		// Check if a client connected
+		// When client connects:
 		if (_networkMgr.IsConnected())
 		{
 			cout << "Client connected — starting match.\n";
 			// Start the game loop (server-authoritative)
 			InitializeBoard();
-			PlayGame();
-			// After the match ends, ensure network is stopped and join thread
+			PlayGame(true);            // <-- run multiplayer mode
 			ShutdownNetwork();
-			// Return to main menu afterwards
 			_currentState = GameState::MAIN_MENU;
 			stateFunctions[_currentState]();
 			return;
@@ -1306,10 +1597,7 @@ void GameManager::HostGame()
 void GameManager::ConnectToGame()
 {
 	cout << "Connecting to a Game...\n";
-
-	
 	string host = "127.0.0.1";
-
 	const uint16_t port = 7777;
 
 	if (!_networkMgr.InitializeHostAsClient(host.c_str(), port))
@@ -1320,6 +1608,10 @@ void GameManager::ConnectToGame()
 		stateFunctions[_currentState]();
 		return;
 	}
+
+    _isHosting = false; // set role flag to client
+	_localIsWhite = false;
+	_awaitingServer = false;
 
 	// Start network thread
 	_networkThread = std::thread(&NetworkManager::ServiceLoop, &_networkMgr);
@@ -1352,14 +1644,14 @@ void GameManager::ConnectToGame()
 	// Start playing (you may want a dedicated multiplayer PlayGame)
 
 	InitializeBoard();
-	PlayGame();
+    PlayGame(true); // <-- run multiplayer mode
 }
 
-void GameManager::PlayGame()
+void GameManager::PlayGame(bool isMultiplayer)
 {
 	cout << "Starting the Game...\n";
 	// Placeholder for game loop logic
 	InitializeBoard();
-	Update();
+	Update(isMultiplayer);
 }
 
