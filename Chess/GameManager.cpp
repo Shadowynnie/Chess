@@ -417,6 +417,159 @@ void GameManager::CheckForCheck()
 
 void GameManager::PromotePawn(Figure* pawn)
 {
+	int x = pawn->GetX();
+	int y = pawn->GetY();
+	bool isWhite = pawn->GetColor();
+
+	// choose promotion (modal)
+	uint8_t promoCode = SelectPromotionChoice(x, y, isWhite); // 1=Q,2=R,3=B,4=N
+
+	// remove pawn from player's list
+	auto& playerFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
+	auto it = std::find(playerFigures.begin(), playerFigures.end(), pawn);
+	if (it != playerFigures.end())
+	{
+		playerFigures.erase(it);
+		delete pawn;
+	}
+
+	// create chosen piece and place it
+	Figure* newPiece = CreatePromotionPiece(x, y, isWhite, promoCode);
+	if (newPiece)
+	{
+		playerFigures.push_back(newPiece);
+		_tiles[x][y].SetFigure(newPiece);
+		cout << (isWhite ? "White" : "Black") << " Pawn promoted to "
+			<< (typeid(*newPiece) == typeid(Rook) ? "Rook" :
+				typeid(*newPiece) == typeid(Knight) ? "Knight" :
+				typeid(*newPiece) == typeid(Bishop) ? "Bishop" : "Queen")
+			<< " at (" << x << ", " << y << ")\n";
+	}
+}
+
+uint8_t GameManager::SelectPromotionChoice(int x, int y, bool isWhite)
+{
+	const float itemSize = 128.f;
+	const float padding = 10.f;
+	const float menuWidth = itemSize + padding * 2.f;
+	const float menuHeight = itemSize * 4.f + padding * 5.f;
+
+	sf::Vector2u winSize = _window.getSize();
+	float menuX = (float(winSize.x) - menuWidth) / 2.f;
+	float menuY = (float(winSize.y) - menuHeight) / 2.f;
+
+	sf::RectangleShape promoBackg(sf::Vector2f(menuWidth, menuHeight));
+	promoBackg.setPosition(sf::Vector2f(menuX, menuY));
+	promoBackg.setFillColor(sf::Color(30, 30, 30, 220));
+	promoBackg.setOutlineColor(sf::Color::White);
+	promoBackg.setOutlineThickness(3.f);
+
+	string suffix = isWhite ? "white" : "black";
+	sf::Sprite rookSprite = AssetManager::GetSprite("rook_" + suffix);
+	sf::Sprite knightSprite = AssetManager::GetSprite("knight_" + suffix);
+	sf::Sprite bishopSprite = AssetManager::GetSprite("bishop_" + suffix);
+	sf::Sprite queenSprite = AssetManager::GetSprite("queen_" + suffix);
+
+	auto fitSprite = [&](sf::Sprite& s, float targetSize)
+		{
+			sf::FloatRect bounds = s.getLocalBounds();
+			float maxSide = std::max(bounds.size.x, bounds.size.y);
+			if (maxSide <= 0.f) return;
+			float scale = (targetSize - 24.f) / maxSide;
+			s.setScale(sf::Vector2f(scale, scale));
+		};
+	fitSprite(rookSprite, itemSize);
+	fitSprite(knightSprite, itemSize);
+	fitSprite(bishopSprite, itemSize);
+	fitSprite(queenSprite, itemSize);
+
+	std::array<std::pair<sf::Sprite*, uint8_t>, 4> items =
+	{
+		std::make_pair(&queenSprite, uint8_t(1)), // prefer queen on top
+		std::make_pair(&rookSprite, uint8_t(2)),
+		std::make_pair(&bishopSprite, uint8_t(3)),
+		std::make_pair(&knightSprite, uint8_t(4))
+	};
+
+	for (size_t i = 0; i < items.size(); ++i)
+	{
+		float itemX = menuX + (menuWidth - items[i].first->getGlobalBounds().size.x) / 2.f;
+		float itemY = menuY + padding + i * (itemSize + padding) + (itemSize - items[i].first->getGlobalBounds().size.y) / 2.f;
+		items[i].first->setPosition(sf::Vector2f(itemX, itemY));
+	}
+
+	uint8_t chosen = 1; // default Queen
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		std::optional<sf::Event> event;
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				DeinitializeBoard();
+				_window.close();
+				return chosen;
+			}
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				for (auto& p : items)
+				{
+					if (p.first->getGlobalBounds().contains(mfp))
+					{
+						chosen = p.second;
+						done = true;
+						break;
+					}
+				}
+			}
+			if (event->is<sf::Event::KeyPressed>() && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			{
+				chosen = 1;
+				done = true;
+			}
+		}
+
+		_window.clear();
+		DrawGame();
+		_window.draw(promoBackg);
+		for (size_t i = 0; i < items.size(); ++i)
+		{
+			// draw background box
+			sf::RectangleShape itemBg(sf::Vector2f(itemSize, itemSize));
+			float bx = menuX + padding;
+			float by = menuY + padding + i * (itemSize + padding);
+			itemBg.setPosition(sf::Vector2f(bx, by));
+			itemBg.setFillColor(sf::Color(200, 200, 200, 20));
+			itemBg.setOutlineColor(sf::Color(150, 150, 150, 200));
+			itemBg.setOutlineThickness(1.f);
+			_window.draw(itemBg);
+			_window.draw(*items[i].first);
+		}
+		_window.display();
+	}
+	return chosen;
+}
+
+// Create promotion Figure based on code (1=Q,2=R,3=B,4=N)
+Figure* GameManager::CreatePromotionPiece(int x, int y, bool isWhite, uint8_t promotionCode)
+{
+	switch (promotionCode)
+	{
+	case 2: return new Rook(x, y, isWhite);
+	case 3: return new Bishop(x, y, isWhite);
+	case 4: return new Knight(x, y, isWhite);
+	case 1:
+	default:
+		return new Queen(x, y, isWhite);
+	}
+}
+
+/*
+void GameManager::PromotePawn(Figure* pawn)
+{
 	// Remove pawn from the game first
 	int x = pawn->GetX();
 	int y = pawn->GetY();
@@ -573,7 +726,7 @@ void GameManager::PromotePawn(Figure* pawn)
 				typeid(*newPiece) == typeid(Bishop) ? "Bishop" : "Queen")
 			<< " at (" << x << ", " << y << ")\n";
 	}
-}
+}*/
 
 void GameManager::ResetEnPassantFlags()
 {
@@ -633,26 +786,58 @@ void GameManager::ApplyMoveLocal(const MoveMessage& m)
 
 	// Move the figure (use existing Move overloads)
 	// Attempt pawn-aware overload if this is a Pawn
+	bool movedPawn = false;
 	if (typeid(*fig) == typeid(Pawn))
 	{
 		Pawn* pawn = dynamic_cast<Pawn*>(fig);
 		if (pawn)
+		{
 			pawn->Move(target, source, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+			movedPawn = true;
+		}
 	}
 	else
 	{
 		fig->Move(target, source, _tiles);
 	}
 
-	// Promotion handling from network: if promotion field provided and not zero,
-	// you could replace pawn by chosen piece here. For now keep local promotion flow.
-	if (typeid(*target->GetFigure()) == typeid(Pawn))
+	// Promotion: if the moved piece is a Pawn and is promotable, handle according to message
+	if (movedPawn)
 	{
-		Pawn* pawn = dynamic_cast<Pawn*>(target->GetFigure());
-		if (pawn && pawn->CanPromote())
+		Figure* occupant = target->GetFigure();
+		if (occupant && typeid(*occupant) == typeid(Pawn))
 		{
-			// For now, run local promotion UI (server should have already applied chosen promotion ideally).
-			PromotePawn(pawn);
+			Pawn* pawn = dynamic_cast<Pawn*>(occupant);
+			if (pawn && pawn->CanPromote())
+			{
+				// If promotion code provided by network -> apply it silently
+				if (m.promotion >= 1 && m.promotion <= 4)
+				{
+					int x = target->GetX();
+					int y = target->GetY();
+					bool isWhite = pawn->GetColor();
+					// remove pawn from player's list
+					auto& playerFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
+					auto it = std::find(playerFigures.begin(), playerFigures.end(), pawn);
+					if (it != playerFigures.end())
+					{
+						playerFigures.erase(it);
+						delete pawn;
+					}
+					_tiles[x][y].SetFigure(nullptr);
+					Figure* newPiece = CreatePromotionPiece(x, y, isWhite, m.promotion);
+					if (newPiece)
+					{
+						playerFigures.push_back(newPiece);
+						_tiles[x][y].SetFigure(newPiece);
+					}
+				}
+				else
+				{
+					// fallback: interactive UI on this client
+					PromotePawn(pawn);
+				}
+			}
 		}
 	}
 
@@ -753,6 +938,16 @@ bool GameManager::ServerValidateAndApplyMove(const MoveMessage& m)
 	if (kingInCheck)
 	{
 		return false;
+	}
+
+	if (typeid(*fig) == typeid(Pawn))
+	{
+		bool isWhitePawn = fig->GetColor();
+		if ((isWhitePawn && m.toY == 7) || (!isWhitePawn && m.toY == 0))
+		{
+			if (m.promotion < 1 || m.promotion > 4)
+				return false; // invalid promotion request
+		}
 	}
 
 	// Move is legal. DO NOT apply it here on the network thread.
@@ -872,15 +1067,34 @@ void GameManager::Update(bool isMultiplayer)
 									{
 										Pawn* pawn = dynamic_cast<Pawn*>(selectedTile->GetFigure());
 										if (pawn && pawn->CanPromote())
-											PromotePawn(pawn);
+										{
+											int tx = selectedTile->GetX();
+											int ty = selectedTile->GetY();
+											bool isWhite = pawn->GetColor();
+											uint8_t promo = SelectPromotionChoice(tx, ty, isWhite);
+											moveMsg.promotion = promo;
+											// replace pawn locally with chosen piece (server-authoritative)
+											auto& playerFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
+											auto it = std::find(playerFigures.begin(), playerFigures.end(), pawn);
+											if (it != playerFigures.end())
+											{
+												playerFigures.erase(it);
+												delete pawn;
+											}
+											_tiles[tx][ty].SetFigure(nullptr);
+											Figure* newPiece = CreatePromotionPiece(tx, ty, isWhite, promo);
+											if (newPiece)
+											{
+												playerFigures.push_back(newPiece);
+												_tiles[tx][ty].SetFigure(newPiece);
+											}
+										}
 									}
 
 									// Broadcast to peers (NetworkManager already does this on server validate; for server-initiated moves, send directly)
 									ENetPeer* peer = _networkMgr.GetPeer();
 									if (peer)
-									{
 										NetworkManager::SendMoveReliable(peer, moveMsg);
-									}
 
 									// finish turn
 									ClearHighlitghts();
@@ -900,6 +1114,18 @@ void GameManager::Update(bool isMultiplayer)
 									ENetPeer* serverPeer = _networkMgr.GetPeer();
 									if (serverPeer)
 									{
+										if (typeid(*previousSelectedTile->GetFigure()) == typeid(Pawn))
+										{
+											bool isWhitePawn = previousSelectedTile->GetFigure()->GetColor();
+											int toY = selectedTile->GetY();
+											bool willPromote = (isWhitePawn && toY == 7) || (!isWhitePawn && toY == 0);
+											
+											if (willPromote)
+											{
+												uint8_t promo = SelectPromotionChoice(static_cast<int>(selectedTile->GetX()), toY, isWhitePawn);
+												moveMsg.promotion = promo;
+											}
+										}
 										bool ok = NetworkManager::SendMoveReliable(serverPeer, moveMsg);
 										if (!ok)
 											cerr << "Failed to send move to server\n";
@@ -909,9 +1135,7 @@ void GameManager::Update(bool isMultiplayer)
 										previousSelectedTile = nullptr;
 									}
 									else
-									{
 										cerr << "No server peer available to send move\n";
-									}
 								}
 							}
 							else // singleplayer: apply move locally as before
@@ -955,22 +1179,49 @@ void GameManager::Update(bool isMultiplayer)
 						}
 					}
 					// When the player clicks on a figure for the first time
-					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
+					if (selectedTile->IsOccupied())
 					{
-						vector<Tile*> possibleMoves;
-						if (typeid(*selectedTile->GetFigure()) == typeid(King))
+						// The piece must belong to the side to move
+						if (selectedTile->GetFigure()->GetColor() == _currentRound)
 						{
-							auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
-							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+							// In multiplayer, only allow interaction when this client controls the side to move
+							if (isMultiplayer)
+							{
+								// Only allow selection when this client controls the side to move
+								// and it's not waiting for server confirmation.
+								if (!_awaitingServer && (_localIsWhite == _currentRound))
+								{
+									// Allowed: show possible moves for the selected piece
+									vector<Tile*> possibleMoves;
+									if (typeid(*selectedTile->GetFigure()) == typeid(King))
+									{
+										auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+										possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+									}
+									else
+										possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
+									ClearHighlitghts();
+									selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
+									previousSelectedTile = selectedTile;
+								}
+								// otherwise: ignore selection (no highlighting, no input)
+							}
+							else
+							{
+								// Singleplayer: same as before
+								vector<Tile*> possibleMoves;
+								if (typeid(*selectedTile->GetFigure()) == typeid(King))
+								{
+									auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+									possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+								}
+								else
+									possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
+								ClearHighlitghts();
+								selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
+								previousSelectedTile = selectedTile;
+							}
 						}
-						else
-							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
-
-						ClearHighlitghts();
-						selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
-						previousSelectedTile = selectedTile;
-
-						//sendTestData(_networkMgr); // Networking test function call
 					}
 					CheckForCheck();
 				}
@@ -1020,7 +1271,8 @@ void GameManager::MainMenu()
 		"HOST GAME",
 		"JOIN GAME",
 		"SETTINGS",
-		"QUIT" };
+		"QUIT" 
+	};
 
 	// Create button shapes and texts
 	vector<sf::RectangleShape> buttons;

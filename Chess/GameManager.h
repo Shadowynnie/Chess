@@ -86,4 +86,10 @@ public:
 
 	// Expose mutex protecting game state (network thread locks before calling server validation)
 	static std::mutex& GetGameMutex();
+
+	// Promotion helpers (roundtrip support)
+	// Returns promotion code: 0 = none, 1 = Queen, 2 = Rook, 3 = Bishop, 4 = Knight
+	static uint8_t SelectPromotionChoice(int x, int y, bool isWhite);
+	// Creates a Figure* for the given promotion code (does not insert into vectors)
+	static Figure* CreatePromotionPiece(int x, int y, bool isWhite, uint8_t promotionCode);
 };
