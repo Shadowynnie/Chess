@@ -1,4 +1,5 @@
 #include "GameManager.h"
+#include "Networking/NetworkManager.h"
 #include "Colors.h"
 #include "Figurines/Figure.h"
 #include "Figurines/Bishop.h"
@@ -8,8 +9,11 @@
 #include "Figurines/Queen.h"
 #include "Figurines/Pawn.h"
 
+#include <thread>
+
 using std::cerr;
 using std::cout;
+using std::thread;
 
 /* TODO:
 * Implement networking for multiplayer mode
@@ -17,6 +21,9 @@ using std::cout;
 * Add AI player bot for singleplayer mode
 * Get rid of global variables where possible
 */
+
+thread _networkThread;
+NetworkManager _networkMgr;
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
@@ -27,12 +34,12 @@ static vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess piece
 sf::RenderWindow _window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
 
 // Replaces switch-case or if-else chains for state management
-map<GameState, function<void()>> stateFunctions
+map<GameState, std::function<void()>> stateFunctions
 {
 	{ GameState::MAIN_MENU, [&]() { GameManager::MainMenu(); }},
 	{ GameState::HOST_GAME, []() { GameManager::HostGame(); }},
 	{ GameState::CONNECT_TO_GAME, []() { GameManager::ConnectToGame(); }},
-	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(); }},
+	{ GameState::SINGLEPLAYER, []() { GameManager::PlayGame(false); }},
 	{ GameState::GAME_OVER, []() { GameManager::EndGameMenu(); }}, // Start GameOver menu here
 	{ GameState::CLOSED, [&]() { _window.close(); }},
 	{ GameState::SETTINGS, [&]() { GameManager::SettingsMenu(); }}
@@ -212,7 +219,7 @@ void GameManager::InitializeBoard()
 	}
 
 	// Factory map for all piece types
-	map<PieceType, function<Figure* (int, int, bool)>> factories = 
+	map<PieceType, std::function<Figure* (int, int, bool)>> factories = 
 	{
 		{ PieceType::ROOK,   [](int x,int y,bool w) { return new Rook(x,y,w); } },
 		{ PieceType::KNIGHT, [](int x,int y,bool w) { return new Knight(x,y,w); } },
@@ -525,7 +532,7 @@ void GameManager::PromotePawn(Figure* pawn)
 	}
 
 	// Map for creating the chosen piece (replaces switch)
-	map<PromotionChoice, function<Figure* ()>> constructors;
+	map<PromotionChoice, std::function<Figure* ()>> constructors;
 	constructors[PromotionChoice::ROOK] = [x, y, isWhite]() { return new Rook(x, y, isWhite); };
 	constructors[PromotionChoice::KNIGHT] = [x, y, isWhite]() { return new Knight(x, y, isWhite); };
 	constructors[PromotionChoice::BISHOP] = [x, y, isWhite]() { return new Bishop(x, y, isWhite); };
@@ -561,7 +568,7 @@ void GameManager::ResetEnPassantFlags()
 	}
 }
 
-void GameManager::Update()
+void GameManager::Update(bool isMultiplayer = false)
 {
 	std::optional<sf::Event> event;
 	sf::Vector2i mousePos;
@@ -668,6 +675,8 @@ void GameManager::Update()
 					// When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
+                        _networkMgr.sendTestPacket(_networkMgr.GetPeer()); // Networking test packet send
+
 						vector<Tile*> possibleMoves;
 						if (typeid(*selectedTile->GetFigure()) == typeid(King))
 						{
@@ -1132,19 +1141,25 @@ void GameManager::PausedMenu()
 void GameManager::HostGame()
 {
 	cout << "Hosting a Game...\n";
-	// Placeholder for hosting game logic
+	_networkMgr.Initialize();
+	_networkMgr.HostGame(7777);
+	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+    PlayGame(true);
 }
 
 void GameManager::ConnectToGame()
 {
 	cout << "Connecting to a Game...\n";
-	// Placeholder for connecting to game logic
+    _networkMgr.Initialize();
+	_networkMgr.ConnectToGame("127.0.0.1", 7777);
+	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+    PlayGame(true);
 }
 
-void GameManager::PlayGame()
+void GameManager::PlayGame(bool isMultiplayer = false)
 {
 	cout << "Starting the Game...\n";
 	// Placeholder for game loop logic
 	InitializeBoard();
-	Update();
+	Update(isMultiplayer);
 }

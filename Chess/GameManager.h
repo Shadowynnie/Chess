@@ -8,10 +8,6 @@
 
 #include "Tile.h"
 
-using std::vector;
-using std::map;
-using std::function;
-
 enum class GameState
 {
 	MAIN_MENU,
@@ -51,17 +47,17 @@ public:
 	// Drawing functions
 	static void DrawGame(); // Function to draw the chessboard and figures on the window
 	static void DrawTiles(sf::RenderWindow& window, Tile tiles[8][8]);
-	static void DrawFigures(sf::RenderWindow& window, const vector<Figure*>& white, const vector<Figure*>& black);
+	static void DrawFigures(sf::RenderWindow& window, const std::vector<Figure*>& white, const std::vector<Figure*>& black);
 	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
 	static void ClearHighlitghts();
 	static void CheckForCheck(); // Function to check if a king is in check
 	static void PromotePawn(Figure* pawn); // Function to handle pawn promotion
 	static void ResetEnPassantFlags(); // Function to reset en passant flags for all pawns
-	static void Update(); // Function to update the game state
+	static void Update(bool isMultiplayer); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
 	static void HostGame(); // Function to host a game
 	static void ConnectToGame(); // Function to connect to a game
-	static void PlayGame(); // Singleplayer or multiplayer game loop
+	static void PlayGame(bool isMultiplayer); // Singleplayer or multiplayer game loop
 
 	// Endgame / check utilities
 	static bool IsKingInCheck(bool isWhite);

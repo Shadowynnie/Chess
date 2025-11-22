@@ -22,7 +22,6 @@ link_directories(${SFML_ROOT}/lib)
 set(ENET_INCLUDE_DIR "$ENV{ENET_ROOT}/include")
 set(ENET_LIBRARY "$ENV{ENET_ROOT}/lib/enet.lib")
 
-
 # Ensure ENet paths are valid
 if(NOT EXISTS ${ENET_INCLUDE_DIR}/enet/enet.h)
     message(FATAL_ERROR "ENet include directory not found: ${ENET_INCLUDE_DIR}")
@@ -37,10 +36,11 @@ include_directories(${ENET_INCLUDE_DIR})
 # Make the library accessible globally for linking
 set(ENET_LIB ${ENET_LIBRARY})
 
-
 # Include sub-projects.
 add_subdirectory ("Chess")
 
-
 # Copy the Assets folder to the build directory
 file(COPY ${CMAKE_SOURCE_DIR}/Chess/Assets DESTINATION ${CMAKE_BINARY_DIR}/Chess)
+# Copy SFML DLLs to the build directory
+file(GLOB SFML_DLLS "${SFML_ROOT}/bin/*-d-3.dll")
+file(COPY ${SFML_DLLS} DESTINATION ${CMAKE_BINARY_DIR}/Chess)
