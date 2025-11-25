@@ -45,6 +45,15 @@ map<GameState, std::function<void()>> stateFunctions
 	{ GameState::SETTINGS, [&]() { GameManager::SettingsMenu(); }}
 };
 
+void GameManager::StopNetworkThread()
+{
+	if (_networkThread.joinable())
+	{
+		_networkMgr.Disconnect();
+		_networkThread.join();
+	}
+}
+
 // Returns whether the given side's king is currently in check.
 bool GameManager::IsKingInCheck(bool isWhite)
 {
@@ -648,6 +657,13 @@ void GameManager::Update(bool isMultiplayer = false)
 									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
 							}
 
+							_networkMgr.SendMovePacket(_networkMgr.GetPeer(), MoveMessage{
+								static_cast<uint8_t>(previousSelectedTile->GetX(),
+								previousSelectedTile->GetY(),
+								selectedTile->GetX(),
+								selectedTile->GetY())
+                                }); // Send move over network
+
 							// Check for pawn promotion
 							if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
 							{
@@ -675,7 +691,7 @@ void GameManager::Update(bool isMultiplayer = false)
 					// When the player clicks on a figure for the first time
 					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
 					{
-                        _networkMgr.sendTestPacket(_networkMgr.GetPeer()); // Networking test packet send
+                        _networkMgr.SendTestPacket(_networkMgr.GetPeer()); // Networking test packet send
 
 						vector<Tile*> possibleMoves;
 						if (typeid(*selectedTile->GetFigure()) == typeid(King))

@@ -11,6 +11,7 @@ int main()
 	AssetManager::LoadTextures();
     GameManager::MainMenu();
 
+    GameManager::StopNetworkThread();
 	//GameManager gameManager;
 	//AssetManager::loadTextures();
 	//gameManager.InitializeBoard();

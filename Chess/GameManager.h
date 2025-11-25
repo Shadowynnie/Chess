@@ -58,6 +58,7 @@ public:
 	static void HostGame(); // Function to host a game
 	static void ConnectToGame(); // Function to connect to a game
 	static void PlayGame(bool isMultiplayer); // Singleplayer or multiplayer game loop
+    static void StopNetworkThread(); // Function to stop the network thread
 
 	// Endgame / check utilities
 	static bool IsKingInCheck(bool isWhite);
