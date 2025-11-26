@@ -16,7 +16,6 @@ using std::cout;
 using std::thread;
 
 /* TODO:
-* Implement networking for multiplayer mode
 * Add configuration menu to set network settings, sound settings, etc.
 * Add configuration file to save user preferences
 * Add sound effects and background music
@@ -362,7 +361,7 @@ void GameManager::DeinitializeBoard()
 
 // Drawing function definitions
 // Draw the chessboard tiles
-/*
+/**/
 void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 {
 	for (int i = 0; i < 8; ++i)
@@ -385,8 +384,9 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 			window.draw(tile.TileShape);
 		}
 	}
-}*/
+}
 // With tile indices drawn
+/*
 void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 {
 	// Load font
@@ -436,8 +436,7 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 			
 		}
 	}
-}
-
+}*/
 
 // Draw the chess pieces for both players
 void GameManager::DrawFigures(sf::RenderWindow& window,
@@ -1514,16 +1513,6 @@ void GameManager::HostGame()
     StopNetworkThread();
 }
 
-//void GameManager::ConnectToGame()
-//{
-//	cout << "Connecting to a Game...\n";
-//    _networkMgr.Initialize();
-//	_networkMgr.ConnectToGame("127.0.0.1", 7777);
-//	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
-//	_localIsWhite = false;
-//    PlayGame(true);
-//}
-
 void GameManager::ConnectToGame()
 {
 	cout << "Connecting to a Game...\n";
@@ -1661,11 +1650,8 @@ void GameManager::ConnectToGame()
 		// Avoid 100% CPU loop
 		std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
-
 	StopNetworkThread();
 }
-
-
 
 void GameManager::PlayGame(bool isMultiplayer = false)
 {
