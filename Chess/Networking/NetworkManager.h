@@ -20,11 +20,19 @@ struct MoveMessage
     uint8_t flags;      // bitflags (e.g. castling, en-passant marker)
 };
 
+struct PromotionMessage
+{
+    uint8_t x;          // 0..7
+    uint8_t y;          // 0..7
+    uint8_t promotion;  // 0-R, 1=N, 2=B, 3=Q (See PieceType enum)
+};
+
 enum class MessageType : uint8_t
 {
     MOVE,
     TURN_INFO,
     BOARD_STATE,
+    PROMOTION_INFO,
     ACKNOWLEDGEMENT,
     TEST_PACKET,
     PING
@@ -37,8 +45,10 @@ public:
     ~NetworkManager();
     bool Initialize();
     void Deinitialize();
-    std::vector<uint8_t> CreatePacketData(const MoveMessage& mvMsg); // Function to serialize packet data
+    std::vector<uint8_t> SerializeMoveData(const MoveMessage& mvMsg); // Function to serialize packet data
+    std::vector<uint8_t> SerializePromotionData(const PromotionMessage& promoMsg); // Function to serialize promotion data
     std::optional<MoveMessage> ParsePacketData(const uint8_t* data, size_t length); // Function to deserialize packet data
+    std::optional<PromotionMessage> ParsePromotionData(const uint8_t* data, size_t length); // Function to deserialize promotion data
     bool HostGame(unsigned short port);
     bool ConnectToGame(const std::string& address, unsigned short port);
     void Disconnect();
@@ -54,6 +64,7 @@ public:
     void SendTestPacket(ENetPeer* peer);
     void SendMovePacket(ENetPeer* peer, const MoveMessage& mvMsg);
     void SendRoundInfo(ENetPeer* peer, bool isWhiteTurn);
+    void SendPromotionInfo(ENetPeer* peer, const PromotionMessage& promoMsg);
 
 private:
     ENetHost* _client = nullptr;

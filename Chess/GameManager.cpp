@@ -18,6 +18,8 @@ using std::thread;
 /* TODO:
 * Implement networking for multiplayer mode
 * Add configuration menu to set network settings, sound settings, etc.
+* Add configuration file to save user preferences
+* Add sound effects and background music
 * Add AI player bot for singleplayer mode
 * Get rid of global variables where possible
 */
@@ -31,7 +33,7 @@ GameResult _gameResult;
 static Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
 static vector<Figure*> _playerOneFigures; // Vector to hold player 1 chess pieces (WHITE)
 static vector<Figure*> _playerTwoFigures; // Vector to hold player 2 chess pieces (BLACK)
-sf::RenderWindow _window(sf::VideoMode({ 1024,1024 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
+sf::RenderWindow _window(sf::VideoMode({ 1024,1074 }, sf::VideoMode::getDesktopMode().bitsPerPixel), "Chess Game", sf::Style::Close | sf::Style::Resize);
 
 // Replaces switch-case or if-else chains for state management
 map<GameState, std::function<void()>> stateFunctions
@@ -87,6 +89,40 @@ void GameManager::ApplyIncomingMove(int fromX, int fromY, int toX, int toY)
 		// Clear highlights and reset en-passant flags
 		ClearHighlitghts();
 		//ResetEnPassantFlags();
+	}
+}
+
+void GameManager::ApplyIncomingPromotion(int x, int y, PieceType newType)
+{
+	Tile* tile = &_tiles[x][y];
+	Figure* pawnFigure = tile->GetFigure();
+	if (pawnFigure && typeid(*pawnFigure) == typeid(Pawn))
+	{
+		bool isWhite = pawnFigure->GetColor();
+		// Remove the pawn from the player's figure list
+		auto& playerFigures = isWhite ? _playerOneFigures : _playerTwoFigures;
+		auto it = std::find(playerFigures.begin(), playerFigures.end(), pawnFigure);
+		if (it != playerFigures.end())
+		{
+			playerFigures.erase(it);
+			delete pawnFigure; // Free memory
+		}
+		// Create the new piece based on promotion choice
+		Figure* newPiece = nullptr;
+		if (newType == PieceType::QUEEN)
+			newPiece = new Queen(x, y, isWhite);
+		else if (newType == PieceType::ROOK)
+			newPiece = new Rook(x, y, isWhite);
+		else if (newType == PieceType::BISHOP)
+			newPiece = new Bishop(x, y, isWhite);
+		else if (newType == PieceType::KNIGHT)
+			newPiece = new Knight(x, y, isWhite);
+		else
+			newPiece = new Queen(x, y, isWhite); // Default to queen
+
+		// Place the new piece on the tile and add to player's figure list
+		tile->SetFigure(newPiece);
+		playerFigures.push_back(newPiece);
 	}
 }
 
@@ -441,6 +477,45 @@ void GameManager::DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8])
 	}
 }
 
+void GameManager::DrawStatusBar()
+{
+	// Height of your blue stripe
+	const float statusHeight = 50.f;
+
+	// Blue bar background
+	sf::RectangleShape bar(sf::Vector2f(1024.f, statusHeight));
+	bar.setPosition(sf::Vector2f(0.f, 1024.f));               // <-- draw it BELOW the board
+	bar.setFillColor(sf::Color(0, 90, 220));    // nice blue
+
+	_window.draw(bar);
+
+	// Load font
+	sf::Font font;
+	bool loaded = false;
+	if (!loaded)
+	{
+		if (!font.openFromFile("Assets/Fonts/arial.ttf"))
+			std::cerr << "Failed to load font for status bar\n";
+		loaded = true;
+	}
+
+	// Status text
+	sf::Text text = font;
+	text.setCharacterSize(20);
+	text.setFillColor(sf::Color::White);
+	text.setString(_currentRound ? "White's turn" : "Black's turn");
+
+	// Center text horizontally
+	sf::FloatRect bounds = text.getLocalBounds();
+	text.setPosition(
+		sf::Vector2f(512.f - bounds.size.x / 2.f - bounds.position.x,
+		1024.f + statusHeight / 2.f - bounds.size.y / 2.f
+	));
+
+	_window.draw(text);
+}
+
+
 void GameManager::DrawGame()
 {
 	// Tiles
@@ -451,6 +526,9 @@ void GameManager::DrawGame()
 
 	// Highlights
 	DrawHighlights(_window, _tiles);
+
+    // Status bar
+    DrawStatusBar();
 }
 
 void GameManager::ClearHighlitghts()
@@ -495,7 +573,7 @@ void GameManager::CheckForCheck()
 	checkKing(false); // Check black king
 }
 
-void GameManager::PromotePawn(Figure* pawn)
+void GameManager::PromotePawn(Figure* pawn, bool isMultiplayer = false)
 {
 	// Remove pawn from the game first
 	int x = pawn->GetX();
@@ -652,6 +730,19 @@ void GameManager::PromotePawn(Figure* pawn)
 				typeid(*newPiece) == typeid(Knight) ? "Knight" :
 				typeid(*newPiece) == typeid(Bishop) ? "Bishop" : "Queen")
 			<< " at (" << x << ", " << y << ")\n";
+        // If multiplayer, send promotion info to opponent
+		if (isMultiplayer)
+		{
+            // Send promotion info over network
+			PromotionMessage promoMsg = {
+				static_cast<uint8_t>(x),
+				static_cast<uint8_t>(y),
+				static_cast<uint8_t>((typeid(*newPiece) == typeid(Rook) ? 0 :
+					(typeid(*newPiece) == typeid(Knight) ? 1 :
+                        (typeid(*newPiece) == typeid(Bishop) ? 2 : 3))))
+			};
+            _networkMgr.SendPromotionInfo(_networkMgr.GetPeer(),promoMsg);
+		}
 	}
 }
 
@@ -691,13 +782,11 @@ void GameManager::Update(bool isMultiplayer = false)
 				(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape) ||
 					sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)))
 			{
-				//_currentState = GameState::MAIN_MENU;
-				//DeinitializeBoard();
-				//stateFunctions[_currentState]();
-				// Add a paused menu call here later
+				// Pause menu
                 PausedMenu();
 			}
-			if (event->is<sf::Event::MouseButtonPressed>() && (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
+			if (event->is<sf::Event::MouseButtonPressed>() &&
+				(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)))
 			{
 				mousePos = sf::Mouse::getPosition(_window);
 				int tileX = mousePos.x / 128;
@@ -720,14 +809,21 @@ void GameManager::Update(bool isMultiplayer = false)
 					//cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White\n" : "Black\n") : "N/A\n");
 					//cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << "\n";
 					//cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes\n" : " No\n");
-					//cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
+					cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
 					//cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << "\n"
 
 					// When the player clicks on a highlighted tile to move
 					if (previousSelectedTile != nullptr)
 					{
+                        // Ignore clicks if it's not the player's turn in multiplayer
+						if (isMultiplayer && (_localIsWhite != _currentRound))
+						{
+							ClearHighlitghts();
+							previousSelectedTile = nullptr;
+							continue;
+						}
 						// Move the figure to the selected tile
-						if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
+						else if ((selectedTile->IsHighlighted()) && (previousSelectedTile->GetFigure()->GetColor() == _currentRound))
 						{
 							if (selectedTile->IsOccupied())
 							{	// Capture opponent's piece
@@ -746,32 +842,37 @@ void GameManager::Update(bool isMultiplayer = false)
 									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
 							}
 
-							// Send move over network
-							MoveMessage moveMsg = {
-								static_cast<uint8_t>(previousSelectedTile->GetX()),
-								static_cast<uint8_t>(previousSelectedTile->GetY()),
-								static_cast<uint8_t>(selectedTile->GetX()),
-								static_cast<uint8_t>(selectedTile->GetY())
-                            };
-							
-							_networkMgr.SendMovePacket(_networkMgr.GetPeer(), moveMsg); 
+                            // Send move over network if it's multiplayer
+							if(isMultiplayer)
+							{
+								MoveMessage moveMsg = {
+									static_cast<uint8_t>(previousSelectedTile->GetX()),
+									static_cast<uint8_t>(previousSelectedTile->GetY()),
+									static_cast<uint8_t>(selectedTile->GetX()),
+									static_cast<uint8_t>(selectedTile->GetY())
+								};
+								_networkMgr.SendMovePacket(_networkMgr.GetPeer(), moveMsg);								
+                            }
 
 							// Check for pawn promotion
 							if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
 							{
 								Pawn* pawn = dynamic_cast<Pawn*>(selectedTile->GetFigure());
 								if (pawn && pawn->CanPromote())
-									PromotePawn(pawn);
+								{
+									PromotePawn(pawn, isMultiplayer);
+								}	
 							}
 
 							ClearHighlitghts();
 							// Switch turns
 							_currentRound = !_currentRound;
-                            // Send turn change over network
-							//if (_networkMgr.GetServerHost() != nullptr)
-							//{
-							_networkMgr.SendRoundInfo(_networkMgr.GetPeer(), _currentRound);
-							//}
+                            // Send turn change over network if multiplayer
+							if (isMultiplayer)
+							{
+								_networkMgr.SendRoundInfo(_networkMgr.GetPeer(), _currentRound);
+							}
+							
 							previousSelectedTile = nullptr;
 							// Reset en passant flags for opponent pawns
 							ResetEnPassantFlags();
@@ -786,22 +887,53 @@ void GameManager::Update(bool isMultiplayer = false)
 						}
 					}
 					// When the player clicks on a figure for the first time
-					if ((selectedTile->IsOccupied()) && (selectedTile->GetFigure()->GetColor() == _currentRound))
+					if (selectedTile->IsOccupied())
 					{
-                        _networkMgr.SendTestPacket(_networkMgr.GetPeer()); // Networking test packet send
-
-						vector<Tile*> possibleMoves;
-						if (typeid(*selectedTile->GetFigure()) == typeid(King))
+						// The piece must belong to the side to move
+						if (selectedTile->GetFigure()->GetColor() == _currentRound)
 						{
-							auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
-							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+							// In multiplayer, only allow interaction when this client controls the side to move
+							if (isMultiplayer)
+							{
+								// Only allow selection when this client controls the side to move
+								// and it's not waiting for server confirmation.
+								if (_localIsWhite == _currentRound)
+								{
+									// Allowed: show possible moves for the selected piece
+									vector<Tile*> possibleMoves;
+									if (typeid(*selectedTile->GetFigure()) == typeid(King))
+									{
+										auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+										possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+									}
+									else
+									{
+                                        possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
+									}
+									ClearHighlitghts();
+									selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
+									previousSelectedTile = selectedTile;
+								}
+								// otherwise: ignore selection (no highlighting, no input)
+							}
+							else
+							{
+								// Singleplayer: same as before
+								vector<Tile*> possibleMoves;
+								if (typeid(*selectedTile->GetFigure()) == typeid(King))
+								{
+									auto& enemyFigures = _currentRound ? _playerTwoFigures : _playerOneFigures;
+									possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles, enemyFigures);
+								}
+								else
+								{
+									possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
+								}
+								ClearHighlitghts();
+								selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
+								previousSelectedTile = selectedTile;
+							}
 						}
-						else
-							possibleMoves = selectedTile->GetFigure()->GetPossibleMoves(_tiles);
-
-						ClearHighlitghts();
-						selectedTile->GetFigure()->HighlightPossibleMoves(possibleMoves);
-						previousSelectedTile = selectedTile;
 					}
 					CheckForCheck();
 				}
@@ -1068,6 +1200,7 @@ void GameManager::EndGameMenu()
 					// cleanup and go to main menu
 					DeinitializeBoard();
 					_currentState = GameState::MAIN_MENU;
+					StopNetworkThread();
 					// call main menu handler
 					stateFunctions[_currentState]();
 					return;
@@ -1079,7 +1212,11 @@ void GameManager::EndGameMenu()
 					DeinitializeBoard();
 					InitializeBoard();
 					// Enter game loop again
-					Update();
+                    bool isMultiplayer = ((_networkMgr.GetServerHost() != nullptr) || _networkMgr.IsConnected());
+					if (isMultiplayer)
+						Update(isMultiplayer);
+					else
+						Update();
 					return;
 				}
 			}
@@ -1222,6 +1359,7 @@ void GameManager::PausedMenu()
 				{
 					// Leave match: cleanup and go to main menu
 					DeinitializeBoard();
+                    StopNetworkThread();
 					_currentState = GameState::MAIN_MENU;
 					stateFunctions[_currentState]();
 					return;
@@ -1257,6 +1395,7 @@ void GameManager::HostGame()
 	_networkMgr.Initialize();
 	_networkMgr.HostGame(7777);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+	_localIsWhite = true;
     PlayGame(true);
 }
 
@@ -1266,6 +1405,7 @@ void GameManager::ConnectToGame()
     _networkMgr.Initialize();
 	_networkMgr.ConnectToGame("127.0.0.1", 7777);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+	_localIsWhite = false;
     PlayGame(true);
 }
 

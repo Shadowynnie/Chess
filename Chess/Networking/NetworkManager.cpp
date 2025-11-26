@@ -16,8 +16,9 @@ NetworkManager::~NetworkManager()
     Deinitialize();
 }
 
+//=====================SERIALIZATION======================
 // Function to create packet data by serializing the message
-vector<uint8_t> NetworkManager::CreatePacketData( const MoveMessage& mvMsg)
+vector<uint8_t> NetworkManager::SerializeMoveData( const MoveMessage& mvMsg)
 {
     vector<uint8_t> data;
     data.reserve(1 + sizeof(mvMsg)); // Reserve space for type + payload
@@ -28,7 +29,20 @@ vector<uint8_t> NetworkManager::CreatePacketData( const MoveMessage& mvMsg)
     return data;
 }
 
+vector<uint8_t> NetworkManager::SerializePromotionData(const PromotionMessage& promoMsg)
+{
+    vector<uint8_t> data;
+    data.reserve(1 + sizeof(promoMsg)); // Reserve space for type + payload
+    data.push_back(static_cast<uint8_t>(MessageType::PROMOTION_INFO));
+    // Serialization logic for different message types would go here
+    const uint8_t* rawBytesPtr = reinterpret_cast<const uint8_t*>(&promoMsg);
+    data.insert(data.end(), rawBytesPtr, rawBytesPtr + sizeof(promoMsg));
+    return data;
+}
+
+// =============================DESERIALIZATION===========================
 // Function to parse packet data by deserializing the message
+// TODO: Make this more generic to handle different message types
 std::optional<MoveMessage> NetworkManager::ParsePacketData(const uint8_t* data, size_t length)
 {
     if (length < 1 + sizeof(MoveMessage))
@@ -37,6 +51,15 @@ std::optional<MoveMessage> NetworkManager::ParsePacketData(const uint8_t* data, 
     MoveMessage mvMsg;
     std::memcpy(&mvMsg, data + 1, sizeof(MoveMessage));
     return mvMsg;
+}
+
+std::optional<PromotionMessage> NetworkManager::ParsePromotionData(const uint8_t* data, size_t length)
+{
+    if (length < 1 + sizeof(PromotionMessage))
+        return std::nullopt; // Not enough data
+    PromotionMessage promoMsg;
+    std::memcpy(&promoMsg, data + 1, sizeof(PromotionMessage));
+    return promoMsg;
 }
 
 // ====================TESTING======================
@@ -49,7 +72,7 @@ void NetworkManager::SendTestPacket(ENetPeer* peer)
 
 void NetworkManager::SendMovePacket(ENetPeer* peer, const MoveMessage& mvMsg)
 {
-    vector<uint8_t> packetData = CreatePacketData(mvMsg);
+    vector<uint8_t> packetData = SerializeMoveData(mvMsg);
     ENetPacket* packet = enet_packet_create(packetData.data(), packetData.size(), ENET_PACKET_FLAG_RELIABLE);
     enet_peer_send(peer, 0, packet);
 }
@@ -61,6 +84,16 @@ void NetworkManager::SendRoundInfo(ENetPeer* peer, bool isWhiteTurn)
     data.push_back(static_cast<uint8_t>(MessageType::TURN_INFO));
     data.push_back(turnInfo);
     ENetPacket* packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
+    enet_peer_send(peer, 0, packet);
+}
+
+void NetworkManager::SendPromotionInfo(ENetPeer* peer, const PromotionMessage& promoMsg)
+{
+    vector<uint8_t> packetData = SerializePromotionData(promoMsg);
+    packetData.push_back(static_cast<uint8_t>(MessageType::PROMOTION_INFO));
+    const uint8_t* rawBytesPtr = reinterpret_cast<const uint8_t*>(&promoMsg);
+    packetData.insert(packetData.end(), rawBytesPtr, rawBytesPtr + sizeof(promoMsg));
+    ENetPacket* packet = enet_packet_create(packetData.data(), packetData.size(), ENET_PACKET_FLAG_RELIABLE);
     enet_peer_send(peer, 0, packet);
 }
 // =================================================
@@ -197,6 +230,30 @@ void NetworkManager::ServiceNetwork()
                     {
                         string fen(reinterpret_cast<const char*>(data + 1), length - 1);
                         cout << "Received BOARD STATE string: " << fen << "\n";
+                    }
+                    else if (msgType == static_cast<uint8_t>(MessageType::PROMOTION_INFO))
+                    {
+                        auto promoData = ParsePromotionData(data, length);
+                        if(!promoData)
+                        {
+                            cerr << "Invalid PROMOTION packet received\n";
+                        }
+                        else
+                        {
+                            // process the promotion
+                            GameManager::ApplyIncomingPromotion(promoData->x, promoData->y, static_cast<PieceType>(promoData->promotion));
+                            cout << "Received PROMOTION INFO: at (" << static_cast<int>(promoData->x) << "," << static_cast<int>(promoData->y)
+                                << ") to type " << static_cast<int>(promoData->promotion) << "\n";
+                        }
+                    }
+                    else if (msgType == static_cast<uint8_t>(MessageType::ACKNOWLEDGEMENT))
+                    {
+                        cout << "Received ACKNOWLEDGEMENT message.\n";
+                    }
+                    else if (msgType == static_cast<uint8_t>(MessageType::TEST_PACKET))
+                    {
+                        string testMsg(reinterpret_cast<const char*>(data + 1), length - 1);
+                        cout << "Received TEST PACKET: " << testMsg << "\n";
                     }
                     else if (msgType == static_cast<uint8_t>(MessageType::PING))
                     {

@@ -21,12 +21,12 @@ enum class GameState
 
 enum class PieceType
 {
-	ROOK,
-	KNIGHT,
-	BISHOP,
-	QUEEN,
-	KING,
-	PAWN
+	ROOK,	// 0
+	KNIGHT,	// 1
+	BISHOP,	// 2
+	QUEEN,	// 3
+	KING,	// 4
+	PAWN	// 5
 };
 
 enum class GameResult
@@ -37,6 +37,7 @@ enum class GameResult
 };
 
 static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
+static bool _localIsWhite = true; // True = this instance plays White, False = Black
 
 class GameManager
 {
@@ -51,9 +52,10 @@ public:
 	static void DrawTiles(sf::RenderWindow& window, Tile tiles[8][8]);
 	static void DrawFigures(sf::RenderWindow& window, const std::vector<Figure*>& white, const std::vector<Figure*>& black);
 	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
+    static void DrawStatusBar(); // Function to draw the status bar (current turn, etc.)
 	static void ClearHighlitghts();
 	static void CheckForCheck(); // Function to check if a king is in check
-	static void PromotePawn(Figure* pawn); // Function to handle pawn promotion
+	static void PromotePawn(Figure* pawn, bool isMultiplayer); // Function to handle pawn promotion
 	static void ResetEnPassantFlags(); // Function to reset en passant flags for all pawns
 	static void Update(bool isMultiplayer); // Function to update the game state
 	static void MainMenu(); // Function to display the main menu
@@ -63,6 +65,7 @@ public:
     static void StopNetworkThread(); // Function to stop the network thread
     static void ChangeRound(); // Function to change the current round/player turn
     static void ApplyIncomingMove(int fromX, int fromY, int toX, int toY); // Function to apply incoming move from the network
+    static void ApplyIncomingPromotion(int x, int y, PieceType newType); // Function to apply incoming pawn promotion from the network
 
 	// Endgame / check utilities
 	static bool IsKingInCheck(bool isWhite);
