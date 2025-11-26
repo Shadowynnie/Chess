@@ -1,4 +1,5 @@
 #include "NetworkManager.h"
+#include "../GameManager.h"
 #include <iostream>
 #include <chrono>
 
@@ -50,6 +51,16 @@ void NetworkManager::SendMovePacket(ENetPeer* peer, const MoveMessage& mvMsg)
 {
     vector<uint8_t> packetData = CreatePacketData(mvMsg);
     ENetPacket* packet = enet_packet_create(packetData.data(), packetData.size(), ENET_PACKET_FLAG_RELIABLE);
+    enet_peer_send(peer, 0, packet);
+}
+
+void NetworkManager::SendRoundInfo(ENetPeer* peer, bool isWhiteTurn)
+{
+    uint8_t turnInfo = isWhiteTurn ? 1 : 0;
+    vector<uint8_t> data;
+    data.push_back(static_cast<uint8_t>(MessageType::TURN_INFO));
+    data.push_back(turnInfo);
+    ENetPacket* packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
     enet_peer_send(peer, 0, packet);
 }
 // =================================================
@@ -165,38 +176,21 @@ void NetworkManager::ServiceNetwork()
                         }
                         else
                         {
-                            /*
-                            MoveMessage mv = *mvOpt;
-                            if (m_isServer)
-                            {
-                                // Server: validate move (no state changes here)
-                                bool valid = GameManager::ServerValidateAndApplyMove(mv);
-                                if (valid)
-                                {
-                                    // Enqueue for the local main/UI thread so server applies move and updates sprites there
-                                    PushIncomingMove(mv);
+                            // process the move
+                            GameManager::ApplyIncomingMove(moveData->fromX, moveData->fromY, moveData->toX, moveData->toY);
 
-                                    // Broadcast the validated move to all connected peers
-                                    auto buffer = SerializeMove(mv);
-                                    ENetPacket* pkt = enet_packet_create(buffer.data(), buffer.size(), ENET_PACKET_FLAG_RELIABLE);
-                                    if (pkt)
-                                    {
-                                        enet_host_broadcast(m_host, 0, pkt);
-                                        enet_host_flush(m_host);
-                                    }
-                                }
-                                else
-                                {
-                                    cerr << "Server rejected incoming move request\n";
-                                }
-                            }
-                            else
-                            {
-                                // Client: server (or host) forwarded a validated move -> queue for main thread
-                                PushIncomingMove(mv);
-                            }*/
                             cout << "Received MOVE packet: from (" << static_cast<int>(moveData->fromX) << "," << static_cast<int>(moveData->fromY)
                                 << ") to (" << static_cast<int>(moveData->toX) << "," << static_cast<int>(moveData->toY) << ")\n";
+                        }
+                    }
+                    else if (msgType == static_cast<uint8_t>(MessageType::TURN_INFO))
+                    {
+                        // If host receives TURN INFO, update local game state
+                        if (host)
+                        {
+                            GameManager::ChangeRound();
+                            bool isWhiteTurn = data[1] != 0;
+                            cout << "Received TURN INFO: It's now " << (isWhiteTurn ? "White's turn.\n" : "Black's turn.\n");
                         }
                     }
                     else if (msgType == static_cast<uint8_t>(MessageType::BOARD_STATE))

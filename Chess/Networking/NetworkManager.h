@@ -53,6 +53,7 @@ public:
     // Testing functions
     void SendTestPacket(ENetPeer* peer);
     void SendMovePacket(ENetPeer* peer, const MoveMessage& mvMsg);
+    void SendRoundInfo(ENetPeer* peer, bool isWhiteTurn);
 
 private:
     ENetHost* _client = nullptr;

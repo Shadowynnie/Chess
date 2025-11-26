@@ -36,6 +36,8 @@ enum class GameResult
 	DRAW
 };
 
+static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
+
 class GameManager
 {
 public:
@@ -59,6 +61,8 @@ public:
 	static void ConnectToGame(); // Function to connect to a game
 	static void PlayGame(bool isMultiplayer); // Singleplayer or multiplayer game loop
     static void StopNetworkThread(); // Function to stop the network thread
+    static void ChangeRound(); // Function to change the current round/player turn
+    static void ApplyIncomingMove(int fromX, int fromY, int toX, int toY); // Function to apply incoming move from the network
 
 	// Endgame / check utilities
 	static bool IsKingInCheck(bool isWhite);
@@ -68,4 +72,5 @@ public:
 	static void EndGameMenu();
     static void SettingsMenu(); // Function to display settings menu
     static void PausedMenu(); // Function to display paused menu
+    static bool GetCurrentRound() { return _currentRound; } // Getter for current round
 };

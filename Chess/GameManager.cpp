@@ -25,7 +25,7 @@ using std::thread;
 thread _networkThread;
 NetworkManager _networkMgr;
 
-static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
+//static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
 GameResult _gameResult;
 static Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
@@ -45,12 +45,48 @@ map<GameState, std::function<void()>> stateFunctions
 	{ GameState::SETTINGS, [&]() { GameManager::SettingsMenu(); }}
 };
 
+void GameManager::ChangeRound()
+{
+	_currentRound = !_currentRound;
+}
+
 void GameManager::StopNetworkThread()
 {
 	if (_networkThread.joinable())
 	{
 		_networkMgr.Disconnect();
 		_networkThread.join();
+	}
+}
+
+void GameManager::ApplyIncomingMove(int fromX, int fromY, int toX, int toY)
+{
+	Tile* sourceTile = &_tiles[fromX][fromY];
+	Tile* targetTile = &_tiles[toX][toY];
+	//Figure* movingFigure = sourceTile->GetFigure();
+	if (sourceTile->GetFigure() != nullptr)
+	{
+        if (targetTile->IsOccupied()) // Capture oponent's piece
+		{
+			if (targetTile->GetFigure()->GetColor() != _currentRound)
+				sourceTile->GetFigure()->Move(targetTile, sourceTile, targetTile->GetFigure()->GetColor() != true ? _playerTwoFigures : _playerOneFigures);
+		}
+        else // Normal move
+		{
+			if (typeid(*sourceTile->GetFigure()) == typeid(Pawn))
+			{
+				Pawn* pawn = dynamic_cast<Pawn*>(sourceTile->GetFigure());
+				if (pawn)
+					pawn->Move(targetTile, sourceTile, _currentRound ? _playerTwoFigures : _playerOneFigures, _tiles);
+			}
+			else
+				sourceTile->GetFigure()->Move(targetTile, sourceTile, _tiles);
+		}
+		// Move the figure
+		//movingFigure->Move(targetTile, sourceTile, _tiles);
+		// Clear highlights and reset en-passant flags
+		ClearHighlitghts();
+		//ResetEnPassantFlags();
 	}
 }
 
@@ -290,6 +326,7 @@ void GameManager::DeinitializeBoard()
 
 // Drawing function definitions
 // Draw the chessboard tiles
+/*
 void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 {
 	for (int i = 0; i < 8; ++i)
@@ -312,7 +349,59 @@ void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
 			window.draw(tile.TileShape);
 		}
 	}
+}*/
+// With tile indices drawn
+void GameManager::DrawTiles(sf::RenderWindow& window, Tile tiles[8][8])
+{
+	// Load font
+	sf::Font font;
+	string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	for (int i = 0; i < 8; ++i)
+	{
+		for (int j = 0; j < 8; ++j)
+		{
+			Tile& tile = tiles[i][j];
+
+			// if the tile is not in check, use standard colors
+			if (!tile.IsInCheck())
+			{
+				tile.TileShape.setFillColor((i + j) % 2 == 0
+					? Colors::LightTile
+					: Colors::DarkTile);
+			}
+			else
+			{
+				tile.TileShape.setFillColor(Colors::InCheckTile);
+			}
+
+			sf::Vector2f pos(float(i * 128), float(j * 128));
+			tile.TileShape.setPosition(pos);
+			window.draw(tile.TileShape);
+
+			// ---- Draw X,Y index text in upper-right corner ----
+
+			sf::Text indexText(font);
+			indexText.setFont(font);
+			indexText.setString(std::to_string(i) + ", " + std::to_string(j));
+			indexText.setCharacterSize(10);
+			indexText.setFillColor(sf::Color::Black);
+
+			// Position text in the upper-right corner of the tile
+			float textX = pos.x + 128.f - 2.f;  // right with small inset
+			float textY = pos.y + 2.f;          // top with small inset
+
+			indexText.setPosition(sf::Vector2f(textX - indexText.getLocalBounds().size.x,
+					textY));
+
+			window.draw(indexText);
+			
+		}
+	}
 }
+
 
 // Draw the chess pieces for both players
 void GameManager::DrawFigures(sf::RenderWindow& window,
@@ -657,12 +746,15 @@ void GameManager::Update(bool isMultiplayer = false)
 									previousSelectedTile->GetFigure()->Move(selectedTile, previousSelectedTile, _tiles);
 							}
 
-							_networkMgr.SendMovePacket(_networkMgr.GetPeer(), MoveMessage{
-								static_cast<uint8_t>(previousSelectedTile->GetX(),
-								previousSelectedTile->GetY(),
-								selectedTile->GetX(),
-								selectedTile->GetY())
-                                }); // Send move over network
+							// Send move over network
+							MoveMessage moveMsg = {
+								static_cast<uint8_t>(previousSelectedTile->GetX()),
+								static_cast<uint8_t>(previousSelectedTile->GetY()),
+								static_cast<uint8_t>(selectedTile->GetX()),
+								static_cast<uint8_t>(selectedTile->GetY())
+                            };
+							
+							_networkMgr.SendMovePacket(_networkMgr.GetPeer(), moveMsg); 
 
 							// Check for pawn promotion
 							if (typeid(*selectedTile->GetFigure()) == typeid(Pawn))
@@ -675,6 +767,11 @@ void GameManager::Update(bool isMultiplayer = false)
 							ClearHighlitghts();
 							// Switch turns
 							_currentRound = !_currentRound;
+                            // Send turn change over network
+							//if (_networkMgr.GetServerHost() != nullptr)
+							//{
+							_networkMgr.SendRoundInfo(_networkMgr.GetPeer(), _currentRound);
+							//}
 							previousSelectedTile = nullptr;
 							// Reset en passant flags for opponent pawns
 							ResetEnPassantFlags();
