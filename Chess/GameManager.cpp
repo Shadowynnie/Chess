@@ -1396,18 +1396,276 @@ void GameManager::HostGame()
 	_networkMgr.HostGame(7777);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
 	_localIsWhite = true;
-    PlayGame(true);
+    //PlayGame(true);
+	// Modal UI
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	const float backW = 520.f;
+	const float backH = 220.f;
+	sf::Vector2u winSize = _window.getSize();
+	float backX = (float(winSize.x) - backW) / 2.f;
+	float backY = (float(winSize.y) - backH) / 2.f;
+
+	sf::RectangleShape back(sf::Vector2f(backW, backH));
+	back.setPosition(sf::Vector2f(backX, backY));
+	back.setFillColor(sf::Color(30, 30, 30, 230));
+	back.setOutlineColor(sf::Color::White);
+	back.setOutlineThickness(3.f);
+
+	sf::Text label(font);
+	label.setString("Waiting for client to connect...");
+	label.setCharacterSize(24u);
+	label.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect lb = label.getLocalBounds();
+		label.setPosition(sf::Vector2f(backX + (backW - lb.size.x) / 2.f - lb.position.x,
+			backY + 30.f - lb.position.y));
+	}
+
+	// Cancel button
+	const float btnW = 160.f, btnH = 52.f;
+	sf::RectangleShape cancelBtn(sf::Vector2f(btnW, btnH));
+	cancelBtn.setPosition(sf::Vector2f(backX + (backW - btnW) / 2.f, backY + backH - btnH - 24.f));
+	cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	cancelBtn.setOutlineColor(sf::Color::White);
+	cancelBtn.setOutlineThickness(1.f);
+
+	sf::Text cancelTxt(font);
+	cancelTxt.setString("CANCEL");
+	cancelTxt.setCharacterSize(20u);
+	cancelTxt.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect tb = cancelTxt.getLocalBounds();
+		sf::FloatRect rb = cancelBtn.getGlobalBounds();
+		cancelTxt.setPosition(sf::Vector2f(
+			rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+	}
+
+	// Modal loop: returns only when client connects or user cancels
+	std::optional<sf::Event> event;
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				// user closed window: ensure network stops then exit
+				DeinitializeBoard();
+                StopNetworkThread();
+				_window.close();
+				return;
+			}
+
+			if (event->is<sf::Event::MouseMoved>())
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+					cancelBtn.setFillColor(sf::Color(100, 100, 100, 240));
+				else
+					cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+			}
+
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+				{
+					// Cancel hosting and return to main menu
+                    StopNetworkThread();
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+			}
+		}
+
+		// When client connects:
+		if (_networkMgr.IsConnected())
+		{
+			cout << "Client " << _networkMgr.GetPeer()->host << " from " << _networkMgr.GetPeer()->address.host << " connected starting match.\n";
+			// Start the game loop (server-authoritative)
+			InitializeBoard();
+			PlayGame(true);            // <-- run multiplayer mode
+			return;
+		}
+
+		// Draw modal
+		_window.clear();
+		DrawGame(); // optional background
+		_window.draw(back);
+		_window.draw(label);
+		_window.draw(cancelBtn);
+		_window.draw(cancelTxt);
+		_window.display();
+
+		// small sleep to avoid busy loop (keeps UI responsive)
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+	}
+
+	// If we get here, make sure network stopped
+    StopNetworkThread();
 }
+
+//void GameManager::ConnectToGame()
+//{
+//	cout << "Connecting to a Game...\n";
+//    _networkMgr.Initialize();
+//	_networkMgr.ConnectToGame("127.0.0.1", 7777);
+//	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+//	_localIsWhite = false;
+//    PlayGame(true);
+//}
 
 void GameManager::ConnectToGame()
 {
 	cout << "Connecting to a Game...\n";
-    _networkMgr.Initialize();
+	_networkMgr.Initialize();
 	_networkMgr.ConnectToGame("127.0.0.1", 7777);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+
 	_localIsWhite = false;
-    PlayGame(true);
+
+	// ========= Modal UI Setup =========
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	const float backW = 520.f;
+	const float backH = 220.f;
+	sf::Vector2u winSize = _window.getSize();
+	float backX = (float(winSize.x) - backW) / 2.f;
+	float backY = (float(winSize.y) - backH) / 2.f;
+
+	sf::RectangleShape back(sf::Vector2f(backW, backH));
+	back.setPosition(sf::Vector2f(backX, backY));
+	back.setFillColor(sf::Color(30, 30, 30, 230));
+	back.setOutlineColor(sf::Color::White);
+	back.setOutlineThickness(3.f);
+
+	sf::Text label(font);
+	label.setString("Attempting to connect...");
+	label.setCharacterSize(24u);
+	label.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect lb = label.getLocalBounds(); // lb.position.x/lb.position.y, lb.size.x/lb.size.y
+		label.setPosition(
+			sf::Vector2f(backX + (backW - lb.size.x) / 2.f - lb.position.x,
+			backY + 30.f - lb.position.y
+		));
+	}
+
+	// Cancel button
+	const float btnW = 160.f, btnH = 52.f;
+	sf::RectangleShape cancelBtn(sf::Vector2f(btnW, btnH));
+	cancelBtn.setPosition(sf::Vector2f(backX + (backW - btnW) / 2.f, backY + backH - btnH - 24.f));
+	cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	cancelBtn.setOutlineColor(sf::Color::White);
+	cancelBtn.setOutlineThickness(1.f);
+
+	sf::Text cancelTxt(font);
+	cancelTxt.setString("CANCEL");
+	cancelTxt.setCharacterSize(20u);
+	cancelTxt.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect tb = cancelTxt.getLocalBounds();
+		sf::FloatRect rb = cancelBtn.getGlobalBounds(); // rb.position.x/rb.position.y, rb.size.x/rb.size.y
+		cancelTxt.setPosition(
+			sf::Vector2f(rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+	}
+
+	// ========= Timeout logic =========
+	const int TIMEOUT_MS = 7000; // adjustable (7 seconds)
+	auto startTime = std::chrono::steady_clock::now();
+
+	// ========= Modal Event Loop =========
+	std::optional<sf::Event> event;
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				DeinitializeBoard();
+				StopNetworkThread();
+				_window.close();
+				return;
+			}
+
+			if (event->is<sf::Event::MouseMoved>())
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp((float)mp.x, (float)mp.y);
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+					cancelBtn.setFillColor(sf::Color(100, 100, 100, 240));
+				else
+					cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+			}
+
+			if (event->is<sf::Event::MouseButtonPressed>() &&
+				sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp((float)mp.x, (float)mp.y);
+
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+				{
+					StopNetworkThread();
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+			}
+		}
+
+		// Check connection success
+		if (_networkMgr.IsConnected())
+		{
+			cout << "Connected to host!\n";
+			InitializeBoard();
+			PlayGame(true);
+			return;
+		}
+
+		// Check timeout
+		auto now = std::chrono::steady_clock::now();
+		int elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+		if (elapsed > TIMEOUT_MS)
+		{
+			cout << "Connection timed out.\n";
+			StopNetworkThread();
+			_currentState = GameState::MAIN_MENU;
+			stateFunctions[_currentState]();
+			return;
+		}
+
+		// Draw modal UI (NO chessboard!)
+		_window.clear(sf::Color(20, 20, 20));
+		_window.draw(back);
+		_window.draw(label);
+		_window.draw(cancelBtn);
+		_window.draw(cancelTxt);
+		_window.display();
+
+		// Avoid 100% CPU loop
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+	}
+
+	StopNetworkThread();
 }
+
+
 
 void GameManager::PlayGame(bool isMultiplayer = false)
 {
