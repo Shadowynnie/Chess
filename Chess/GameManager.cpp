@@ -20,7 +20,9 @@ using std::thread;
 * Add sound effects and background music
 * Add AI player bot for singleplayer mode
 * Fix buggy displaying of red tiles when the kings are endangered
+* See the TODO section in the NetworkManager.cpp
 * Get rid of global variables where possible
+*  !!! IF THE GHOST SPRITE BUG APPEARS AGAIN, FIND THE CAUTION SECTION !!!
 */
 
 thread _networkThread;
@@ -81,8 +83,6 @@ void GameManager::ApplyIncomingMove(int fromX, int fromY, int toX, int toY)
 			else
 				sourceTile->GetFigure()->Move(targetTile, sourceTile, _tiles);
 		}
-		// Move the figure
-		//movingFigure->Move(targetTile, sourceTile, _tiles);
 		// Clear highlights and reset en-passant flags
 		ClearHighlitghts();
 		//ResetEnPassantFlags();
@@ -512,7 +512,6 @@ void GameManager::DrawStatusBar()
 	_window.draw(text);
 }
 
-
 void GameManager::DrawGame()
 {
 	// Tiles
@@ -732,7 +731,8 @@ void GameManager::PromotePawn(Figure* pawn, bool isMultiplayer = false)
 		if (isMultiplayer)
 		{
 			// Send promotion info over network
-			PromotionMessage promoMsg = {
+			PromotionMessage promoMsg = 
+			{
 				static_cast<uint8_t>(x),
 				static_cast<uint8_t>(y),
 				static_cast<uint8_t>((typeid(*newPiece) == typeid(Rook) ? 0 :
@@ -1757,7 +1757,7 @@ void GameManager::HostGame()
 	_networkMgr.Initialize();
 	_networkMgr.HostGame(ConfigManager::serverPort);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
-	WaitToConnectMenu(); // !!! IF THE GHOST SPRITE MENU APPEARS AGAIN, COMMENT THIS FUNCTION CALL !!!
+	WaitToConnectMenu(); // !!! IF THE GHOST SPRITE BUG APPEARS AGAIN, COMMENT THIS FUNCTION CALL !!!
 	_localIsWhite = true;
 	PlayGame(true);
 }
@@ -1768,7 +1768,7 @@ void GameManager::ConnectToGame()
 	_networkMgr.Initialize();
 	_networkMgr.ConnectToGame(ConfigManager::serverIP, ConfigManager::serverPort);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
-	WaitToConnectMenu(); // !!! IF THE GHOST SPRITE MENU APPEARS AGAIN, COMMENT THIS FUNCTION CALL !!!
+	WaitToConnectMenu(); // CA!!! IF THE GHOST SPRITE BUG APPEARS AGAIN, COMMENT THIS FUNCTION CALL !!!
 	_localIsWhite = false;
 	PlayGame(true);
 }

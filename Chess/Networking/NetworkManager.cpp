@@ -41,7 +41,7 @@ vector<uint8_t> NetworkManager::SerializePromotionData(const PromotionMessage& p
 }
 
 // =============================DESERIALIZATION===========================
-// Function to parse packet data by deserializing the message
+// Functions to parse packet data by deserializing the message
 // TODO: Make this more generic to handle different message types
 std::optional<MoveMessage> NetworkManager::ParsePacketData(const uint8_t* data, size_t length)
 {
@@ -62,7 +62,7 @@ std::optional<PromotionMessage> NetworkManager::ParsePromotionData(const uint8_t
     return promoMsg;
 }
 
-// ====================TESTING======================
+// ==============================PACKET SENDING===============================
 void NetworkManager::SendTestPacket(ENetPeer* peer)
 {
     string message = "Hello, ENet!";
@@ -96,7 +96,7 @@ void NetworkManager::SendPromotionInfo(ENetPeer* peer, const PromotionMessage& p
     ENetPacket* packet = enet_packet_create(packetData.data(), packetData.size(), ENET_PACKET_FLAG_RELIABLE);
     enet_peer_send(peer, 0, packet);
 }
-// =================================================
+// ==============================================================================
 
 bool NetworkManager::Initialize()
 {
