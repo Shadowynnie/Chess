@@ -9,10 +9,16 @@ Figure::Figure(int x, int y, bool isWhite) : Sprite(Texture)
 	//Sprite.setTexture(Texture);
 }
 
-sf::Sprite Figure::GetSprite() const
+//sf::Sprite Figure::GetSprite() const
+//{
+//	return Sprite;
+//}
+
+const sf::Sprite& Figure::GetSprite() const 
 {
 	return Sprite;
 }
+
 
 void Figure::Move(Tile* tile, Tile* previousTile, Tile tiles[8][8]) // Move the figure to the specified tile position
 {

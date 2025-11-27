@@ -27,7 +27,7 @@ public:
 	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8])=0;
 	virtual vector<Tile*> GetPossibleMoves(Tile tiles[8][8], vector<Figure*>& enemyFigures);
     void HighlightPossibleMoves(vector<Tile*>& possibleMoves);
-	virtual sf::Sprite GetSprite() const;
+	const sf::Sprite& GetSprite() const;
 
 	int GetX() const;
 	int GetY() const;

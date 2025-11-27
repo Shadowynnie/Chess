@@ -18,7 +18,7 @@ NetworkManager::~NetworkManager()
 
 //=====================SERIALIZATION======================
 // Function to create packet data by serializing the message
-vector<uint8_t> NetworkManager::SerializeMoveData( const MoveMessage& mvMsg)
+vector<uint8_t> NetworkManager::SerializeMoveData(const MoveMessage& mvMsg)
 {
     vector<uint8_t> data;
     data.reserve(1 + sizeof(mvMsg)); // Reserve space for type + payload
@@ -211,7 +211,6 @@ void NetworkManager::ServiceNetwork()
                         {
                             // process the move
                             GameManager::ApplyIncomingMove(moveData->fromX, moveData->fromY, moveData->toX, moveData->toY);
-
                             cout << "Received MOVE packet: from (" << static_cast<int>(moveData->fromX) << "," << static_cast<int>(moveData->fromY)
                                 << ") to (" << static_cast<int>(moveData->toX) << "," << static_cast<int>(moveData->toY) << ")\n";
                         }
@@ -234,7 +233,7 @@ void NetworkManager::ServiceNetwork()
                     else if (msgType == static_cast<uint8_t>(MessageType::PROMOTION_INFO))
                     {
                         auto promoData = ParsePromotionData(data, length);
-                        if(!promoData)
+                        if (!promoData)
                         {
                             cerr << "Invalid PROMOTION packet received\n";
                         }

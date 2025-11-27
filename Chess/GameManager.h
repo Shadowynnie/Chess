@@ -66,6 +66,7 @@ public:
     static void ChangeRound(); // Function to change the current round/player turn
     static void ApplyIncomingMove(int fromX, int fromY, int toX, int toY); // Function to apply incoming move from the network
     static void ApplyIncomingPromotion(int x, int y, PieceType newType); // Function to apply incoming pawn promotion from the network
+	//static void EnqueueIncomingMove(int fx, int fy, int tx, int ty);
 
 	// Endgame / check utilities
 	static bool IsKingInCheck(bool isWhite);
