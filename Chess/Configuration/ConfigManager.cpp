@@ -47,3 +47,40 @@ bool ConfigManager::Save(const string& path)
     f << "serverPort = " << serverPort << "\n";
     return true;
 }
+
+bool ConfigManager::IsValidIPv4(const std::string& ip)
+{
+    int parts = 0;
+    int num = -1;
+
+    for (size_t i = 0; i <= ip.size(); ++i)
+    {
+        if (i == ip.size() || ip[i] == '.')
+        {
+            if (num < 0 || num > 255)
+                return false;
+            parts++;
+            num = -1;
+        }
+        else if (isdigit(ip[i]))
+        {
+            if (num < 0)
+                num = 0;
+            num = num * 10 + (ip[i] - '0');
+            if (num > 255)
+                return false;
+        }
+        else return false;
+    }
+
+    return parts == 4;
+}
+
+bool ConfigManager::IsValidPort(const std::string& s)
+{
+    if (s.empty()) return false;
+    for (char c : s) if (!isdigit(c)) return false;
+
+    int p = std::stoi(s);
+    return p >= 0 && p <= 65535;
+}

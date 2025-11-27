@@ -1298,15 +1298,18 @@ void GameManager::SettingsMenu()
 	sf::Text saveTxt = makeLabel("SAVE", 0, 0, 22);
 	sf::Text cancelTxt = makeLabel("CANCEL", 0, 0, 22);
 
-	auto centerText = [&](sf::Text& t, sf::RectangleShape& r) {
+	auto centerText = [&](sf::Text& t, sf::RectangleShape& r) 
+	{
 		auto tb = t.getLocalBounds();
 		t.setPosition(
 			sf::Vector2f(r.getPosition().x + (r.getSize().x - tb.size.x) / 2.f - tb.position.x,
 			r.getPosition().y + (r.getSize().y - tb.size.y) / 2.f - tb.position.y
 		));
-		};
+	};
 	centerText(saveTxt, saveBtn);
 	centerText(cancelTxt, cancelBtn);
+
+	sf::Clock clock;
 
 	// MAIN LOOP
 	while (_window.isOpen())
@@ -1329,9 +1332,30 @@ void GameManager::SettingsMenu()
 
 				if (saveBtn.getGlobalBounds().contains(mp))
 				{
-					ConfigManager::serverIP = ipBox.getString();
-					ConfigManager::serverPort = std::stoi(portBox.getString());
+					std::string ip = ipBox.getString();
+					std::string portStr = portBox.getString();
 
+					if (!ConfigManager::IsValidIPv4(ip))
+					{
+						ipBox.setString(ip); // keep text
+						// turn textbox red
+						ipBox.setOutlineColor(sf::Color::Red);
+						std::cerr << "Invalid IP\n";
+						SFMessageBox::Show(_window, font, "Invalid IP address!");
+						continue;
+					}
+					if (!ConfigManager::IsValidPort(portStr))
+					{
+                        portBox.setString(portStr); // keep text
+						// turn textbox red
+						portBox.setOutlineColor(sf::Color::Red);
+						std::cerr << "Invalid port\n";
+						SFMessageBox::Show(_window, font, "Invalid port!");
+						continue;
+					}
+
+					ConfigManager::serverIP = ip;
+					ConfigManager::serverPort = std::stoi(portStr);
 					ConfigManager::Save();
 
 					_currentState = GameState::MAIN_MENU;
@@ -1347,6 +1371,10 @@ void GameManager::SettingsMenu()
 				}
 			}
 		}
+
+		float dt = clock.restart().asSeconds();
+		ipBox.update(dt);
+		portBox.update(dt);
 
 		// DRAW
 		_window.clear(sf::Color(20, 20, 20));
