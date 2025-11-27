@@ -1,20 +1,15 @@
 ﻿// Chess.cpp : Defines the entry point for the application.
 //
 #include <SFML/Graphics.hpp>
-
 #include "GameManager.h"
 #include "AssetManager.h"
-
+#include "Configuration/ConfigManager.h"
 
 int main()
 {
 	AssetManager::LoadTextures();
+    ConfigManager::Load();
     GameManager::MainMenu();
-
     GameManager::StopNetworkThread();
-	//GameManager gameManager;
-	//AssetManager::loadTextures();
-	//gameManager.InitializeBoard();
-	//gameManager.Update();
 	return 0;
 }

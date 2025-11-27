@@ -1,5 +1,6 @@
 #include "GameManager.h"
 #include "Networking/NetworkManager.h"
+#include "Configuration/ConfigManager.h"
 #include "Colors.h"
 #include "Figurines/Figure.h"
 #include "Figurines/Bishop.h"
@@ -803,12 +804,12 @@ void GameManager::Update(bool isMultiplayer = false)
 					cout << "Is tile occupied?" << (selectedTile->IsOccupied() ? " Yes\n" : " No\n");
 					//cout << "Is previous tile nullptr?" << (previousSelectedTile == nullptr ? " Yes\n" : " No\n");
 					//cout << "Is tile highlighted?" << (selectedTile->IsHighlighted() ? " Yes\n" : " No\n");
-					cout << "Current round (true=white, false=black): " << (_currentRound ? "White\n" : "Black\n");
+					//cout << "Current round (true=white, false=black): " << (_currentRound ? "White\n" : "Black\n");
 					//cout << "Tile's figure pointer? " << (selectedTile->GetFigure() != nullptr ? " Yes\n" : " No\n");
 					//cout << "Figure color on selected tile: " << (selectedTile->IsOccupied() ? (selectedTile->GetFigure()->GetColor() ? "White\n" : "Black\n") : "N/A\n");
 					//cout << "Figure position on selected tile: " << (selectedTile->IsOccupied() ? ("X: " + std::to_string(selectedTile->GetFigure()->GetX()) + " Y: " + std::to_string(selectedTile->GetFigure()->GetY())) : "N/A") << "\n";
 					//cout << "Is tile red? " << (selectedTile->IsInCheck() ? " Yes\n" : " No\n");
-					cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
+					//cout << "Is it a Pawn or Queen? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Pawn) ? " Pawn" : (typeid(*selectedTile->GetFigure()) == typeid(Queen) ? " Queen" : " No")) : " N/A") << "\n";
 					//cout << "Is it a Rook? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? " Yes" : " No") : " N/A") << " And did it move? " << (selectedTile->IsOccupied() ? (typeid(*selectedTile->GetFigure()) == typeid(Rook) ? (dynamic_cast<Rook*>(selectedTile->GetFigure())->HasMoved() ? " Yes" : " No") : " N/A") : " N/A") << "\n"
 
 					// When the player clicks on a highlighted tile to move
@@ -1244,11 +1245,128 @@ void GameManager::EndGameMenu()
 
 void GameManager::SettingsMenu()
 {
-	cout << "Settings Menu (not implemented yet)...\n";
-	// Placeholder for settings menu logic
-	_currentState = GameState::CLOSED;
-	stateFunctions[_currentState]();
+	ConfigManager::Load();
+
+	sf::Font font;
+	const std::string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		std::cerr << "Failed to load font: " << fontPath << "\n";
+
+	sf::Vector2u win = _window.getSize();
+
+	const float W = 650.f, H = 430.f;
+	float X = (win.x - W) / 2.f;
+	float Y = (win.y - H) / 2.f;
+
+	sf::RectangleShape panel({ W, H });
+	panel.setPosition(sf::Vector2f(X, Y));
+	panel.setFillColor(sf::Color(40, 40, 40, 240));
+	panel.setOutlineColor(sf::Color::White);
+	panel.setOutlineThickness(3.f);
+
+	auto makeLabel = [&](const std::string& s, float x, float y, unsigned size = 24)
+	{
+		sf::Text t(font);
+		t.setString(s);
+		t.setCharacterSize(size);
+		t.setFillColor(sf::Color::White);
+		t.setPosition(sf::Vector2f(x, y));
+		return t;
+	};
+
+	sf::Text title = makeLabel("SETTINGS", X + 20, Y + 15, 28);
+	sf::Text ipLabel = makeLabel("Server IP:", X + 40, Y + 80);
+	sf::Text portLabel = makeLabel("Port:", X + 40, Y + 150);
+
+	// TEXTBOXES
+	Textbox ipBox(X + 220, Y + 75, 300, 38, font);
+	Textbox portBox(X + 220, Y + 145, 180, 38, font);
+
+	ipBox.setString(ConfigManager::serverIP);
+	portBox.setString(std::to_string(ConfigManager::serverPort));
+
+	// BUTTONS
+	sf::RectangleShape saveBtn({ 180, 55 });
+	sf::RectangleShape cancelBtn({ 180, 55 });
+
+	saveBtn.setPosition(sf::Vector2f(X + 80, Y + H - 90));
+	cancelBtn.setPosition(sf::Vector2f(X + W - 260, Y + H - 90));
+
+	saveBtn.setFillColor(sf::Color(70, 70, 70));
+	cancelBtn.setFillColor(sf::Color(70, 70, 70));
+
+	sf::Text saveTxt = makeLabel("SAVE", 0, 0, 22);
+	sf::Text cancelTxt = makeLabel("CANCEL", 0, 0, 22);
+
+	auto centerText = [&](sf::Text& t, sf::RectangleShape& r) {
+		auto tb = t.getLocalBounds();
+		t.setPosition(
+			sf::Vector2f(r.getPosition().x + (r.getSize().x - tb.size.x) / 2.f - tb.position.x,
+			r.getPosition().y + (r.getSize().y - tb.size.y) / 2.f - tb.position.y
+		));
+		};
+	centerText(saveTxt, saveBtn);
+	centerText(cancelTxt, cancelBtn);
+
+	// MAIN LOOP
+	while (_window.isOpen())
+	{
+		std::optional<sf::Event> e;
+		while (e = _window.pollEvent())
+		{
+			if (e->is<sf::Event::Closed>())
+			{
+				_window.close();
+				return;
+			}
+
+			ipBox.handleEvent(*e, _window);
+			portBox.handleEvent(*e, _window);
+
+			if (e->is<sf::Event::MouseButtonPressed>())
+			{
+				sf::Vector2f mp(sf::Mouse::getPosition(_window));
+
+				if (saveBtn.getGlobalBounds().contains(mp))
+				{
+					ConfigManager::serverIP = ipBox.getString();
+					ConfigManager::serverPort = std::stoi(portBox.getString());
+
+					ConfigManager::Save();
+
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+
+				if (cancelBtn.getGlobalBounds().contains(mp))
+				{
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+			}
+		}
+
+		// DRAW
+		_window.clear(sf::Color(20, 20, 20));
+		_window.draw(panel);
+		_window.draw(title);
+		_window.draw(ipLabel);
+		_window.draw(portLabel);
+
+		ipBox.draw(_window);
+		portBox.draw(_window);
+
+		_window.draw(saveBtn);
+		_window.draw(saveTxt);
+		_window.draw(cancelBtn);
+		_window.draw(cancelTxt);
+
+		_window.display();
+	}
 }
+
 
 void GameManager::PausedMenu()
 {
@@ -1392,7 +1510,7 @@ void GameManager::HostGame()
 {
 	cout << "Hosting a Game...\n";
 	_networkMgr.Initialize();
-	_networkMgr.HostGame(7777);
+	_networkMgr.HostGame(ConfigManager::serverPort);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
 	_localIsWhite = true;
     //PlayGame(true);
@@ -1492,7 +1610,7 @@ void GameManager::HostGame()
 			cout << "Client " << _networkMgr.GetPeer()->host << " from " << _networkMgr.GetPeer()->address.host << " connected starting match.\n";
 			// Start the game loop (server-authoritative)
 			InitializeBoard();
-			PlayGame(true);            // <-- run multiplayer mode
+			PlayGame(true); // <-- run multiplayer mode
 			return;
 		}
 
@@ -1517,7 +1635,7 @@ void GameManager::ConnectToGame()
 {
 	cout << "Connecting to a Game...\n";
 	_networkMgr.Initialize();
-	_networkMgr.ConnectToGame("127.0.0.1", 7777);
+	_networkMgr.ConnectToGame(ConfigManager::serverIP, ConfigManager::serverPort);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
 
 	_localIsWhite = false;

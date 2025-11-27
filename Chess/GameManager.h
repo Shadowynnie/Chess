@@ -53,7 +53,7 @@ public:
 	static void DrawFigures(sf::RenderWindow& window, const std::vector<Figure*>& white, const std::vector<Figure*>& black);
 	static void DrawHighlights(sf::RenderWindow& window, Tile tiles[8][8]);
     static void DrawStatusBar(); // Function to draw the status bar (current turn, etc.)
-	static void ClearHighlitghts();
+    static void ClearHighlitghts(); // Function to clear highlighted tiles
 	static void CheckForCheck(); // Function to check if a king is in check
 	static void PromotePawn(Figure* pawn, bool isMultiplayer); // Function to handle pawn promotion
 	static void ResetEnPassantFlags(); // Function to reset en passant flags for all pawns
