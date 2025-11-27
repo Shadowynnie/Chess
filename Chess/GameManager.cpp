@@ -11,23 +11,20 @@
 #include "Figurines/Pawn.h"
 
 #include <thread>
-#include <mutex>
 
 using std::cerr;
 using std::cout;
 using std::thread;
 
 /* TODO:
-* HostGame() function and ConnectToGame() function -> add a modal UI when waiting for connection
 * Add sound effects and background music
 * Add AI player bot for singleplayer mode
+* Fix buggy displaying of red tiles when the kings are endangered
 * Get rid of global variables where possible
 */
 
 thread _networkThread;
 NetworkManager _networkMgr;
-
-//static bool _currentRound = true; // True for player 1's turn, false for player 2's turn
 GameState _currentState;
 GameResult _gameResult;
 static Tile _tiles[8][8]; // 2D array of tiles representing the chessboard
@@ -230,15 +227,15 @@ bool GameManager::HasAnyLegalMoves(bool isWhite)
 bool GameManager::OnlyKingsLeft()
 {
 	auto countNonKings = [](const vector<Figure*>& figures)
+	{
+		int count = 0;
+		for (auto fig : figures)
 		{
-			int count = 0;
-			for (auto fig : figures)
-			{
-				if (typeid(*fig) != typeid(King))
-					++count;
-			}
-			return count;
-		};
+			if (typeid(*fig) != typeid(King))
+				++count;
+		}
+		return count;
+	};
 
 	return (countNonKings(_playerOneFigures) == 0) && (countNonKings(_playerTwoFigures) == 0);
 }
@@ -319,28 +316,28 @@ void GameManager::InitializeBoard()
 
 	// Helper lambda for player initialization
 	auto initPlayer = [&](bool isWhite)
+	{
+		int backRankRow = isWhite ? 0 : 7;
+		int pawnRow = isWhite ? 1 : 6;
+
+		auto& figures = isWhite ? _playerOneFigures : _playerTwoFigures;
+
+		// Back rank
+		for (int file = 0; file < 8; ++file)
 		{
-			int backRankRow = isWhite ? 0 : 7;
-			int pawnRow = isWhite ? 1 : 6;
-
-			auto& figures = isWhite ? _playerOneFigures : _playerTwoFigures;
-
-			// Back rank
-			for (int file = 0; file < 8; ++file)
-			{
-				PieceType type = backRank[file];
-				Figure* fig = factories[type](file, backRankRow, isWhite);
-				figures.push_back(fig);
-				_tiles[file][backRankRow].SetFigure(fig);
-			}
-			// Pawns
-			for (int file = 0; file < 8; ++file)
-			{
-				Figure* fig = factories[PieceType::PAWN](file, pawnRow, isWhite);
-				figures.push_back(fig);
-				_tiles[file][pawnRow].SetFigure(fig);
-			}
-		};
+			PieceType type = backRank[file];
+			Figure* fig = factories[type](file, backRankRow, isWhite);
+			figures.push_back(fig);
+			_tiles[file][backRankRow].SetFigure(fig);
+		}
+		// Pawns
+		for (int file = 0; file < 8; ++file)
+		{
+			Figure* fig = factories[PieceType::PAWN](file, pawnRow, isWhite);
+			figures.push_back(fig);
+			_tiles[file][pawnRow].SetFigure(fig);
+		}
+	};
 
 	initPlayer(true);   // White
 	initPlayer(false);  // Black
@@ -445,13 +442,13 @@ void GameManager::DrawFigures(sf::RenderWindow& window,
 	const vector<Figure*>& black)
 {
 	auto drawSide = [&](const vector<Figure*>& figures)
+	{
+		for (auto figure : figures)
 		{
-			for (auto figure : figures)
-			{
-				if (figure)
-					window.draw(figure->GetSprite());
-			}
-		};
+			if (figure)
+				window.draw(figure->GetSprite());
+		}
+	};
 	drawSide(white);
 	drawSide(black);
 }
@@ -544,31 +541,31 @@ void GameManager::CheckForCheck()
 {
 	// Check if either king is in check
 	auto checkKing = [&](bool isWhiteKing)
+	{
+		Tile* kingTile = nullptr;
+		auto& friendlyFigures = isWhiteKing ? _playerOneFigures : _playerTwoFigures;
+		auto& enemyFigures = isWhiteKing ? _playerTwoFigures : _playerOneFigures;
+		// Find the king's tile
+		for (auto figure : friendlyFigures)
 		{
-			Tile* kingTile = nullptr;
-			auto& friendlyFigures = isWhiteKing ? _playerOneFigures : _playerTwoFigures;
-			auto& enemyFigures = isWhiteKing ? _playerTwoFigures : _playerOneFigures;
-			// Find the king's tile
-			for (auto figure : friendlyFigures)
+			if (typeid(*figure) == typeid(King))
 			{
-				if (typeid(*figure) == typeid(King))
-				{
-					kingTile = figure->GetCurrentTile(_tiles);
-					break;
-				}
+				kingTile = figure->GetCurrentTile(_tiles);
+				break;
 			}
-			if (kingTile)
+		}
+		if (kingTile)
+		{
+			King* king = dynamic_cast<King*>(kingTile->GetFigure());
+			if (king && king->IsThreatened(_tiles, enemyFigures))
 			{
-				King* king = dynamic_cast<King*>(kingTile->GetFigure());
-				if (king && king->IsThreatened(_tiles, enemyFigures))
-				{
-					kingTile->SetInCheck(true);
-					cout << (isWhiteKing ? "White" : "Black") << " King is in check!\n";
-				}
-				else
-					kingTile->SetInCheck(false);
+				kingTile->SetInCheck(true);
+				cout << (isWhiteKing ? "White" : "Black") << " King is in check!\n";
 			}
-		};
+			else
+				kingTile->SetInCheck(false);
+		}
+	};
 	checkKing(true);  // Check white king
 	checkKing(false); // Check black king
 }
@@ -615,13 +612,14 @@ void GameManager::PromotePawn(Figure* pawn, bool isMultiplayer = false)
 	// Make sprites a bit larger for the menu (AssetManager already scales to 0.5),
 	// adjust scale to visually fit the itemSize while keeping aspect ratio.
 	auto fitSprite = [&](sf::Sprite& s, float targetSize)
-		{
-			sf::FloatRect bounds = s.getLocalBounds();
-			float maxSide = std::max(bounds.size.x, bounds.size.y);
-			if (maxSide <= 0.f) return;
-			float scale = (targetSize - 24.f) / maxSide; // small margin
-			s.setScale(sf::Vector2f(scale, scale));
-		};
+	{
+		sf::FloatRect bounds = s.getLocalBounds();
+		float maxSide = std::max(bounds.size.x, bounds.size.y);
+		if (maxSide <= 0.f)
+			return;
+		float scale = (targetSize - 24.f) / maxSide; // small margin
+		s.setScale(sf::Vector2f(scale, scale));
+	};
 
 	fitSprite(rookSprite, itemSize);
 	fitSprite(knightSprite, itemSize);
@@ -767,6 +765,11 @@ void GameManager::Update(bool isMultiplayer = false)
 	// GAME LOOP
 	while (_window.isOpen())
 	{
+		if (isMultiplayer && !_networkMgr.IsConnected())
+		{
+			DisconnectedMenu();
+			return;
+		}	
 		_window.clear();
 		DrawGame();
 		// Handle input events
@@ -1164,13 +1167,13 @@ void GameManager::EndGameMenu()
 	// Center texts in buttons
 	auto centerTextInRect = [&](sf::Text& t, const sf::RectangleShape& r)
 	{
-			sf::FloatRect tb = t.getLocalBounds();
-			sf::FloatRect rb = r.getGlobalBounds();
-			// use position/size fields
-			t.setPosition(sf::Vector2f(
-				rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
-				rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
-			));
+		sf::FloatRect tb = t.getLocalBounds();
+		sf::FloatRect rb = r.getGlobalBounds();
+		// use position/size fields
+		t.setPosition(sf::Vector2f(
+			rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
 	};
 
 	centerTextInRect(backTxt, backBtn);
@@ -1265,14 +1268,14 @@ void GameManager::SettingsMenu()
 	panel.setOutlineThickness(3.f);
 
 	auto makeLabel = [&](const std::string& s, float x, float y, unsigned size = 24)
-		{
-			sf::Text t(font);
-			t.setString(s);
-			t.setCharacterSize(size);
-			t.setFillColor(sf::Color::White);
-			t.setPosition(sf::Vector2f(x, y));
-			return t;
-		};
+	{
+		sf::Text t(font);
+		t.setString(s);
+		t.setCharacterSize(size);
+		t.setFillColor(sf::Color::White);
+		t.setPosition(sf::Vector2f(x, y));
+		return t;
+	};
 
 	sf::Text title = makeLabel("SETTINGS", X + 20, Y + 15, 28);
 	sf::Text ipLabel = makeLabel("Server IP:", X + 40, Y + 80);
@@ -1299,13 +1302,13 @@ void GameManager::SettingsMenu()
 	sf::Text cancelTxt = makeLabel("CANCEL", 0, 0, 22);
 
 	auto centerText = [&](sf::Text& t, sf::RectangleShape& r)
-		{
-			auto tb = t.getLocalBounds();
-			t.setPosition(
-				sf::Vector2f(r.getPosition().x + (r.getSize().x - tb.size.x) / 2.f - tb.position.x,
-					r.getPosition().y + (r.getSize().y - tb.size.y) / 2.f - tb.position.y
-				));
-		};
+	{
+		auto tb = t.getLocalBounds();
+		t.setPosition(
+			sf::Vector2f(r.getPosition().x + (r.getSize().x - tb.size.x) / 2.f - tb.position.x,
+				r.getPosition().y + (r.getSize().y - tb.size.y) / 2.f - tb.position.y
+			));
+	};
 	centerText(saveTxt, saveBtn);
 	centerText(cancelTxt, cancelBtn);
 
@@ -1395,7 +1398,6 @@ void GameManager::SettingsMenu()
 	}
 }
 
-
 void GameManager::PausedMenu()
 {
 	// Modal frame layout (matching EndGameMenu style)
@@ -1468,11 +1470,11 @@ void GameManager::PausedMenu()
 	// helper to center text in button (SFML 3 API)
 	auto centerTextInRect = [&](sf::Text& t, const sf::RectangleShape& r)
 	{
-			sf::FloatRect tb = t.getLocalBounds();    // tb.position.x/y, tb.size.x/y
-			sf::FloatRect rb = r.getGlobalBounds();   // rb.position.x/y, rb.size.x/y
-			float tx = rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x;
-			float ty = rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y;
-			t.setPosition(sf::Vector2f(tx, ty));
+		sf::FloatRect tb = t.getLocalBounds();    // tb.position.x/y, tb.size.x/y
+		sf::FloatRect rb = r.getGlobalBounds();   // rb.position.x/y, rb.size.x/y
+		float tx = rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x;
+		float ty = rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y;
+		t.setPosition(sf::Vector2f(tx, ty));
 	};
 	centerTextInRect(resumeTxt, resumeBtn);
 	centerTextInRect(leaveTxt, leaveBtn);
@@ -1534,12 +1536,228 @@ void GameManager::PausedMenu()
 	}
 }
 
+void GameManager::DisconnectedMenu()
+{
+	// Prepare modal UI (simple centered text + Back to main menu button)
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	const float backW = 520.f;
+	const float backH = 220.f;
+	sf::Vector2u winSize = _window.getSize();
+	float backX = (float(winSize.x) - backW) / 2.f;
+	float backY = (float(winSize.y) - backH) / 2.f;
+
+	sf::RectangleShape back(sf::Vector2f(backW, backH));
+	back.setPosition(sf::Vector2f(backX, backY));
+	back.setFillColor(sf::Color(30, 30, 30, 230));
+	back.setOutlineColor(sf::Color::White);
+	back.setOutlineThickness(3.f);
+
+	sf::Text label(font);
+	label.setString("Player disconnected.");
+	label.setCharacterSize(24u);
+	label.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect lb = label.getLocalBounds();
+		label.setPosition(sf::Vector2f(backX + (backW - lb.size.x) / 2.f - lb.position.x,
+			backY + 30.f - lb.position.y));
+	}
+
+	// Cancel button
+	const float btnW = 230.f, btnH = 52.f;
+	sf::RectangleShape goMenuBtn(sf::Vector2f(btnW, btnH));
+	goMenuBtn.setPosition(sf::Vector2f(backX + (backW - btnW) / 2.f, backY + backH - btnH - 24.f));
+	goMenuBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	goMenuBtn.setOutlineColor(sf::Color::White);
+	goMenuBtn.setOutlineThickness(1.f);
+
+	sf::Text goMenuTxt(font);
+	goMenuTxt.setString("BACK TO MAIN MENU");
+	goMenuTxt.setCharacterSize(20u);
+	goMenuTxt.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect tb = goMenuTxt.getLocalBounds();
+		sf::FloatRect rb = goMenuBtn.getGlobalBounds();
+		goMenuTxt.setPosition(sf::Vector2f(
+			rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+	}
+
+	// Modal loop
+	std::optional<sf::Event> event;
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				DeinitializeBoard();
+				_window.close();
+				return;
+			}
+
+			// Mouse click handling
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+
+				if (goMenuBtn.getGlobalBounds().contains(mfp))
+				{
+					// Leave match: cleanup and go to main menu
+					DeinitializeBoard();
+					StopNetworkThread();
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+				}
+			}
+
+			// Allow Esc or P to resume
+			if (event->is<sf::Event::KeyPressed>() &&
+				(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape) ||
+					sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)))
+			{
+				DeinitializeBoard();
+				StopNetworkThread();
+				_currentState = GameState::MAIN_MENU;
+				stateFunctions[_currentState]();
+			}
+		}
+
+		// Draw underlying game, then overlay modal
+		_window.clear();
+		_window.draw(back);
+		_window.draw(label);
+		_window.draw(goMenuBtn);
+		_window.draw(goMenuTxt);
+		_window.display();
+	}
+}
+
+void GameManager::WaitToConnectMenu()
+{
+	// Prepare modal UI (simple centered text + Cancel button)
+	sf::Font font;
+	const string fontPath = "Assets/Fonts/arial.ttf";
+	if (!font.openFromFile(fontPath))
+		cerr << "Failed to load font: " << fontPath << "\n";
+
+	const float backW = 520.f;
+	const float backH = 220.f;
+	sf::Vector2u winSize = _window.getSize();
+	float backX = (float(winSize.x) - backW) / 2.f;
+	float backY = (float(winSize.y) - backH) / 2.f;
+
+	sf::RectangleShape back(sf::Vector2f(backW, backH));
+	back.setPosition(sf::Vector2f(backX, backY));
+	back.setFillColor(sf::Color(30, 30, 30, 230));
+	back.setOutlineColor(sf::Color::White);
+	back.setOutlineThickness(3.f);
+
+	sf::Text label(font);
+	label.setString("Waiting for client to connect...");
+	label.setCharacterSize(24u);
+	label.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect lb = label.getLocalBounds();
+		label.setPosition(sf::Vector2f(backX + (backW - lb.size.x) / 2.f - lb.position.x,
+			backY + 30.f - lb.position.y));
+	}
+
+	// Cancel button
+	const float btnW = 160.f, btnH = 52.f;
+	sf::RectangleShape cancelBtn(sf::Vector2f(btnW, btnH));
+	cancelBtn.setPosition(sf::Vector2f(backX + (backW - btnW) / 2.f, backY + backH - btnH - 24.f));
+	cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+	cancelBtn.setOutlineColor(sf::Color::White);
+	cancelBtn.setOutlineThickness(1.f);
+
+	sf::Text cancelTxt(font);
+	cancelTxt.setString("CANCEL");
+	cancelTxt.setCharacterSize(20u);
+	cancelTxt.setFillColor(sf::Color::White);
+	{
+		sf::FloatRect tb = cancelTxt.getLocalBounds();
+		sf::FloatRect rb = cancelBtn.getGlobalBounds();
+		cancelTxt.setPosition(sf::Vector2f(
+			rb.position.x + (rb.size.x - tb.size.x) / 2.f - tb.position.x,
+			rb.position.y + (rb.size.y - tb.size.y) / 2.f - tb.position.y
+		));
+	}
+
+	// Modal loop: returns only when client connects or user cancels
+	std::optional<sf::Event> event;
+	bool done = false;
+	while (_window.isOpen() && !done)
+	{
+		while (event = _window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>())
+			{
+				// user closed window: ensure network stops then exit
+				DeinitializeBoard();
+				StopNetworkThread();
+				_window.close();
+				return;
+			}
+
+			if (event->is<sf::Event::MouseMoved>())
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+					cancelBtn.setFillColor(sf::Color(100, 100, 100, 240));
+				else
+					cancelBtn.setFillColor(sf::Color(70, 70, 70, 220));
+			}
+
+			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			{
+				sf::Vector2i mp = sf::Mouse::getPosition(_window);
+				sf::Vector2f mfp(static_cast<float>(mp.x), static_cast<float>(mp.y));
+				if (cancelBtn.getGlobalBounds().contains(mfp))
+				{
+					// Cancel hosting and return to main menu
+					StopNetworkThread();
+					_currentState = GameState::MAIN_MENU;
+					stateFunctions[_currentState]();
+					return;
+				}
+			}
+		}
+
+		// When client connects:
+		if (_networkMgr.IsConnected())
+		{
+			cout << "Client connected starting match.\n";
+			return;
+		}
+
+		// Draw modal
+		_window.clear();
+		_window.draw(back);
+		_window.draw(label);
+		_window.draw(cancelBtn);
+		_window.draw(cancelTxt);
+		_window.display();
+
+		// small sleep to avoid busy loop (keeps UI responsive)
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+	}
+}
+
 void GameManager::HostGame()
 {
 	cout << "Hosting a Game...\n";
 	_networkMgr.Initialize();
 	_networkMgr.HostGame(ConfigManager::serverPort);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+	WaitToConnectMenu(); // !!! IF THE GHOST SPRITE MENU APPEARS AGAIN, COMMENT THIS FUNCTION CALL !!!
 	_localIsWhite = true;
 	PlayGame(true);
 }
@@ -1550,6 +1768,7 @@ void GameManager::ConnectToGame()
 	_networkMgr.Initialize();
 	_networkMgr.ConnectToGame(ConfigManager::serverIP, ConfigManager::serverPort);
 	_networkThread = thread(&NetworkManager::ServiceNetwork, &_networkMgr);
+	WaitToConnectMenu(); // !!! IF THE GHOST SPRITE MENU APPEARS AGAIN, COMMENT THIS FUNCTION CALL !!!
 	_localIsWhite = false;
 	PlayGame(true);
 }

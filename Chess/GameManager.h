@@ -76,5 +76,7 @@ public:
 	static void EndGameMenu();
     static void SettingsMenu(); // Function to display settings menu
     static void PausedMenu(); // Function to display paused menu
+	static void DisconnectedMenu();
+	static void WaitToConnectMenu();
     static bool GetCurrentRound() { return _currentRound; } // Getter for current round
 };
